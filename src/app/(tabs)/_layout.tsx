@@ -29,11 +29,11 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: color.surface,
           borderTopColor: color.border,
-          // Icono más etiqueta necesitan ~50px de caja de contenido. Con el alto por
-          // defecto no entran y la etiqueta queda cortada al ras del borde inferior en
-          // web. El alto se calcula para dejar 52: 74 − 8 de arriba − 14 de abajo.
+          // Icono (24) más etiqueta (lineHeight 20) necesitan ~54px de caja de contenido.
+          // Con el alto por defecto no entran y la etiqueta queda cortada al ras del
+          // borde inferior en web. El alto deja 58: 80 − 8 de arriba − 14 de abajo.
           // Medido en el navegador, no estimado.
-          height: 74 + insets.bottom,
+          height: 80 + insets.bottom,
           paddingTop: space.sm,
           paddingBottom: insets.bottom + 14,
         },

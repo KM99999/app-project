@@ -130,17 +130,17 @@ export default function BuilderScreen() {
         keyboardShouldPersistTaps="handled">
         {/* Vista previa: refleja tamaño, masa e ingredientes en el momento en que se eligen. */}
         <View style={styles.hero}>
-          <PizzaArt
-            diameter={220}
-            baseToppingIds={pizza.baseToppingIds}
-            extras={extras}
-            crustId={crustId}
-            sizeScale={size?.scale ?? 1}
-          />
-        </View>
+          <View style={styles.heroBackdrop}>
+            <PizzaArt
+              diameter={210}
+              baseToppingIds={pizza.baseToppingIds}
+              extras={extras}
+              crustId={crustId}
+              sizeScale={size?.scale ?? 1}
+            />
+          </View>
 
-        <View style={styles.intro}>
-          <Text variant="body" tone="secondary" center>
+          <Text variant="body" tone="secondary" center style={styles.intro}>
             {pizza.description}
           </Text>
         </View>
@@ -303,30 +303,44 @@ const styles = StyleSheet.create({
 
   hero: {
     alignItems: 'center',
-    paddingTop: space.xxl,
-    paddingBottom: space.lg,
+    paddingTop: space.xl,
+    paddingBottom: space.xl,
+    paddingHorizontal: space.xxl,
+    gap: space.lg,
     backgroundColor: color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
   },
-  intro: { paddingHorizontal: space.xxl, marginTop: -space.md },
+  // Disco gris detrás de la pizza: la despega del blanco y le da un centro visual claro,
+  // que es lo que hace que la vista previa se lea como producto y no como un dibujo suelto.
+  heroBackdrop: {
+    width: 244,
+    height: 244,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  intro: { maxWidth: 320 },
 
-  section: { paddingHorizontal: space.lg },
+  section: { paddingHorizontal: space.xl },
   sizeRow: { flexDirection: 'row', gap: space.sm },
   optionList: { gap: space.sm },
 
-  addonRow: { gap: space.sm, paddingRight: space.lg },
+  addonRow: { gap: space.sm, paddingRight: space.xl },
   addonCard: {
-    width: 118,
+    width: 116,
     padding: space.md,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
-    gap: 2,
+    gap: 1,
   },
   addonSwatch: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.sm,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
     marginBottom: space.sm,
   },
 

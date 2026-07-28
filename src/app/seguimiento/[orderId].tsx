@@ -218,8 +218,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dotDone: { borderColor: color.success, backgroundColor: color.success },
-  dotActive: { borderColor: color.warning, borderWidth: 6, backgroundColor: color.warningSoft },
+  // Rellenos plenos acá, no los tonos de texto: el punto es una forma, no una palabra,
+  // así que se rige por contraste no textual (3:1) y gana en viveza.
+  dotDone: { borderColor: color.successFill, backgroundColor: color.successFill },
+  dotActive: { borderColor: color.warningFill, borderWidth: 6, backgroundColor: color.warningSoft },
   dotCheck: {
     width: 5,
     height: 9,
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   rail: { flex: 1, width: 2, backgroundColor: color.border, marginVertical: 2 },
-  railDone: { backgroundColor: color.success },
+  railDone: { backgroundColor: color.successFill },
   stepText: { flex: 1, paddingBottom: space.xl, gap: 2 },
 
   summary: { gap: space.sm },

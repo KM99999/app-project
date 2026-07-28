@@ -86,14 +86,18 @@ const labelTone = {
 
 const variantStyles = StyleSheet.create({
   primary: { backgroundColor: color.brand },
-  secondary: { backgroundColor: color.brandSoft, borderWidth: 1, borderColor: color.brand },
+  secondary: {
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.brandBorder,
+  },
   ghost: { backgroundColor: 'transparent' },
 });
 
 const pressedStyles = StyleSheet.create({
   primary: { backgroundColor: color.brandPressed },
-  secondary: { backgroundColor: '#F8DDD6' },
-  ghost: { backgroundColor: color.surfaceSunken },
+  secondary: { backgroundColor: color.brandSoft },
+  ghost: { backgroundColor: color.surfaceMuted },
 });
 
 const styles = StyleSheet.create({
@@ -110,5 +114,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
   },
-  disabled: { backgroundColor: color.surfaceSunken, borderColor: color.border },
+  disabled: {
+    backgroundColor: color.surfaceMuted,
+    borderColor: color.border,
+  },
 });

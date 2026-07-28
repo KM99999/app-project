@@ -187,14 +187,14 @@ function EmptyCart({ onBrowse }: { onBrowse: () => void }) {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: space.lg,
-    paddingBottom: space.md,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xl,
     backgroundColor: color.surface,
     borderBottomWidth: 1,
     borderBottomColor: color.border,
     gap: space.xs,
   },
-  content: { padding: space.lg, paddingBottom: STICKY_BAR_CLEARANCE, gap: space.lg },
+  content: { padding: space.xl, paddingBottom: STICKY_BAR_CLEARANCE, gap: space.lg },
 
   lines: { gap: space.md },
   lineCard: { gap: space.md },

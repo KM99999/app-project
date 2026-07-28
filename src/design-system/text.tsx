@@ -11,8 +11,21 @@ import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'r
 import { color, type } from './tokens';
 
 type Variant = keyof typeof type;
-type Tone = 'default' | 'secondary' | 'muted' | 'brand' | 'success' | 'warning' | 'onBrand' | 'disabled';
+type Tone =
+  | 'default'
+  | 'secondary'
+  | 'muted'
+  | 'brand'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'onBrand'
+  | 'disabled';
 
+/**
+ * Los tonos apuntan a los tokens aptos para texto, no a los de relleno. `success` es el
+ * verde oscuro (4.86:1) y no el verde pleno (2.9:1), que sería ilegible.
+ */
 const toneColor: Record<Tone, string> = {
   default: color.ink,
   secondary: color.inkSecondary,
@@ -20,6 +33,7 @@ const toneColor: Record<Tone, string> = {
   brand: color.brand,
   success: color.success,
   warning: color.warning,
+  danger: color.danger,
   onBrand: color.onBrand,
   disabled: color.inkDisabled,
 };

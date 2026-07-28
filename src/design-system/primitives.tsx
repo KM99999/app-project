@@ -1,9 +1,11 @@
 /**
  * Primitivas de interfaz — Forno
  *
- * Los componentes que se repiten entre pantallas. Cada uno lleva sus estados resueltos
- * (normal, presionado, seleccionado, deshabilitado) y sus roles de accesibilidad, para
- * que las pantallas se ocupen de composición y no de detalles de control.
+ * Los componentes que se repiten entre pantallas, en el lenguaje visual del panel de
+ * administración: superficies blancas, radios de 10, bordes finos y sombras muy tenues.
+ *
+ * Cada uno lleva sus estados resueltos (normal, presionado, seleccionado, deshabilitado)
+ * y sus roles de accesibilidad, para que las pantallas se ocupen de composición.
  */
 
 import {
@@ -22,6 +24,11 @@ import { color, elevation, radius, space, touchTarget } from './tokens';
 
 export function Card({ style, ...rest }: ViewProps) {
   return <View style={[styles.card, style]} {...rest} />;
+}
+
+/** Tarjeta sin relleno propio, para cuando el contenido maneja su propio padding. */
+export function CardBare({ style, ...rest }: ViewProps) {
+  return <View style={[styles.cardBare, style]} {...rest} />;
 }
 
 export function Divider({ style }: { style?: ViewStyle }) {
@@ -49,10 +56,20 @@ export function SectionHeader({
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionTitleRow}>
-        <Text variant="h2">
-          {step !== undefined ? `${step} · ` : ''}
+        {/* El número va en su propia cápsula índigo: ancla la vista al recorrer el
+            scroll y hace legible de un vistazo en qué paso está el usuario. */}
+        {step !== undefined ? (
+          <View style={styles.stepBadge}>
+            <Text variant="micro" tone="brand">
+              {step}
+            </Text>
+          </View>
+        ) : null}
+
+        <Text variant="h3" style={styles.sectionTitle}>
           {title}
         </Text>
+
         {optional ? (
           <View style={styles.optionalTag}>
             <Text variant="micro" tone="secondary">
@@ -61,11 +78,46 @@ export function SectionHeader({
           </View>
         ) : null}
       </View>
+
       {hint ? (
-        <Text variant="caption" tone="secondary" style={styles.sectionHint}>
+        <Text variant="caption" tone="secondary">
           {hint}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+/* ── Resumen tipo panel ───────────────────────────────────────────────────── */
+
+/**
+ * Tarjeta de métrica: número grande arriba, etiqueta chica abajo.
+ *
+ * Es el elemento de firma del design system del panel. Acá se usa para resumir el pedido
+ * (productos, tiempo estimado, total) con la misma densidad y jerarquía que un tablero de
+ * ventas: el dato manda y la etiqueta acompaña, nunca al revés.
+ */
+export function StatTile({
+  value,
+  label,
+  tone = 'default',
+}: {
+  value: string;
+  label: string;
+  tone?: 'default' | 'brand' | 'success';
+}) {
+  return (
+    <View style={styles.statTile}>
+      <Text
+        variant="metric"
+        tone={tone === 'default' ? 'default' : tone}
+        numberOfLines={1}
+        adjustsFontSizeToFit>
+        {value}
+      </Text>
+      <Text variant="micro" tone="secondary" numberOfLines={1}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -103,14 +155,14 @@ export function OptionRow({
       style={({ pressed }) => [
         styles.optionRow,
         selected && styles.optionRowSelected,
-        pressed && styles.optionRowPressed,
+        pressed && styles.pressed,
       ]}>
       <Indicator selected={selected} shape={control === 'radio' ? 'circle' : 'square'} />
 
       <View style={styles.optionText}>
         <Text variant={selected ? 'bodyStrong' : 'body'}>{label}</Text>
         {description ? (
-          <Text variant="caption" tone="secondary">
+          <Text variant="micro" tone="secondary">
             {description}
           </Text>
         ) : null}
@@ -173,26 +225,30 @@ export function ChoiceCard({
       style={({ pressed }) => [
         styles.choiceCard,
         selected && styles.choiceCardSelected,
-        pressed && styles.optionRowPressed,
+        pressed && styles.pressed,
       ]}>
-      <Text variant="bodyStrong" center tone={selected ? 'brand' : 'default'}>
+      <Text variant="captionStrong" center tone={selected ? 'brand' : 'default'}>
         {title}
       </Text>
       <Text variant="micro" tone="secondary" center>
         {detail}
       </Text>
-      <Text variant="captionStrong" center tone={selected ? 'brand' : 'default'}>
+      <Text variant="bodyStrong" center tone={selected ? 'brand' : 'default'}>
         {price}
       </Text>
-      {selected ? <View style={styles.choiceCheck} /> : null}
+      {selected ? (
+        <View style={styles.choiceCheck}>
+          <View style={styles.choiceCheckMark} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
 /**
- * Control segmentado, para elegir entre dos o tres modos excluyentes que cambian el
- * resto del formulario (delivery / retiro). Se prefiere a un switch porque nombra las
- * dos opciones: un switch obliga a inferir qué pasa cuando está apagado.
+ * Control segmentado, para elegir entre modos excluyentes que cambian el resto del
+ * formulario (delivery / retiro). Se prefiere a un switch porque nombra las dos opciones:
+ * un switch obliga a inferir qué pasa cuando está apagado.
  */
 export function Segmented<T extends string>({
   options,
@@ -216,9 +272,11 @@ export function Segmented<T extends string>({
             style={({ pressed }) => [
               styles.segment,
               selected && styles.segmentSelected,
-              pressed && styles.optionRowPressed,
+              pressed && styles.pressed,
             ]}>
-            <Text variant={selected ? 'bodyStrong' : 'body'} tone={selected ? 'brand' : 'secondary'}>
+            <Text
+              variant={selected ? 'captionStrong' : 'caption'}
+              tone={selected ? 'onBrand' : 'secondary'}>
               {option.label}
             </Text>
           </Pressable>
@@ -228,8 +286,7 @@ export function Segmented<T extends string>({
   );
 }
 
-/** Campo de texto con etiqueta. La etiqueta es persistente y no un placeholder: un
- *  placeholder que desaparece al escribir deja al usuario sin saber qué estaba llenando. */
+/** Campo de texto con etiqueta persistente — no un placeholder que se borra al escribir. */
 export function Field({
   label,
   value,
@@ -237,6 +294,7 @@ export function Field({
   placeholder,
   optional = false,
   multiline = false,
+  invalid = false,
 }: {
   label: string;
   value: string;
@@ -244,6 +302,7 @@ export function Field({
   placeholder?: string;
   optional?: boolean;
   multiline?: boolean;
+  invalid?: boolean;
 }) {
   return (
     <View style={styles.field}>
@@ -264,7 +323,7 @@ export function Field({
         placeholderTextColor={color.inkMuted}
         multiline={multiline}
         accessibilityLabel={label}
-        style={[styles.input, multiline && styles.inputMultiline]}
+        style={[styles.input, multiline && styles.inputMultiline, invalid && styles.inputInvalid]}
       />
     </View>
   );
@@ -291,7 +350,7 @@ export function Stepper({
   max?: number;
   compact?: boolean;
 }) {
-  const size = compact ? 36 : touchTarget;
+  const size = compact ? 34 : touchTarget;
 
   return (
     <View style={styles.stepper} accessibilityLabel={`Cantidad: ${value}`}>
@@ -304,9 +363,9 @@ export function Stepper({
         style={({ pressed }) => [
           styles.stepperButton,
           { width: size, height: size },
-          pressed && styles.optionRowPressed,
+          pressed && styles.pressed,
         ]}>
-        <View style={[styles.minusBar, value <= min && styles.stepperGlyphDisabled]} />
+        <View style={[styles.barH, value <= min && styles.glyphDisabled]} />
       </Pressable>
 
       <Text variant="bodyStrong" style={styles.stepperValue}>
@@ -322,11 +381,11 @@ export function Stepper({
         style={({ pressed }) => [
           styles.stepperButton,
           { width: size, height: size },
-          pressed && styles.optionRowPressed,
+          pressed && styles.pressed,
         ]}>
-        <View style={[styles.minusBar, value >= max && styles.stepperGlyphDisabled]} />
+        <View style={[styles.barH, value >= max && styles.glyphDisabled]} />
         <View
-          style={[styles.plusBar, value >= max && styles.stepperGlyphDisabled]}
+          style={[styles.barV, value >= max && styles.glyphDisabled]}
           pointerEvents="none"
         />
       </Pressable>
@@ -341,7 +400,7 @@ export function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
     <View style={styles.badge}>
-      <Text variant="micro" tone="onBrand">
+      <Text variant="micro" tone="onBrand" style={styles.badgeText}>
         {count > 9 ? '9+' : count}
       </Text>
     </View>
@@ -349,15 +408,27 @@ export function Badge({ count }: { count: number }) {
 }
 
 /** Etiqueta informativa: "Envío gratis", "Más pedida". */
-export function Chip({ label, tone = 'brand' }: { label: string; tone?: 'brand' | 'success' }) {
+export function Chip({
+  label,
+  tone = 'brand',
+}: {
+  label: string;
+  tone?: 'brand' | 'success' | 'neutral';
+}) {
   return (
-    <View style={[styles.chip, tone === 'success' ? styles.chipSuccess : styles.chipBrand]}>
-      <Text variant="micro" tone={tone}>
+    <View style={[styles.chip, chipTone[tone]]}>
+      <Text variant="micro" tone={tone === 'neutral' ? 'secondary' : tone}>
         {label}
       </Text>
     </View>
   );
 }
+
+const chipTone = StyleSheet.create({
+  brand: { backgroundColor: color.brandSoft },
+  success: { backgroundColor: color.successSoft },
+  neutral: { backgroundColor: color.surfaceMuted },
+});
 
 /** Fila del desglose de precios. `strong` para el total. */
 export function PriceRow({
@@ -373,10 +444,12 @@ export function PriceRow({
 }) {
   return (
     <View style={styles.priceRow}>
-      <Text variant={strong ? 'bodyStrong' : 'body'} tone={strong ? 'default' : 'secondary'}>
+      <Text variant={strong ? 'bodyStrong' : 'caption'} tone={strong ? 'default' : 'secondary'}>
         {label}
       </Text>
-      <Text variant={strong ? 'h3' : 'body'} tone={tone ?? (strong ? 'default' : 'secondary')}>
+      <Text
+        variant={strong ? 'h3' : 'captionStrong'}
+        tone={tone ?? (strong ? 'default' : 'default')}>
         {value}
       </Text>
     </View>
@@ -386,29 +459,53 @@ export function PriceRow({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: color.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.card,
     borderWidth: 1,
     borderColor: color.border,
     padding: space.lg,
+    ...elevation.card,
+  },
+  cardBare: {
+    backgroundColor: color.surface,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: color.border,
+    overflow: 'hidden',
     ...elevation.card,
   },
   divider: { height: 1, backgroundColor: color.border },
 
   sectionHeader: { marginBottom: space.md, gap: space.xs },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  sectionTitle: { flexShrink: 1 },
+  stepBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    backgroundColor: color.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   optionalTag: {
-    backgroundColor: color.surfaceSunken,
+    backgroundColor: color.surfaceMuted,
     borderRadius: radius.full,
     paddingHorizontal: space.sm,
     paddingVertical: 2,
   },
-  sectionHint: { marginTop: -2 },
+
+  statTile: {
+    flex: 1,
+    paddingVertical: space.md,
+    paddingHorizontal: space.sm,
+    alignItems: 'center',
+    gap: 2,
+  },
 
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    minHeight: touchTarget + 8,
+    minHeight: touchTarget + 6,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
     borderRadius: radius.md,
@@ -417,30 +514,30 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
   },
   optionRowSelected: { borderColor: color.brand, backgroundColor: color.brandSoft },
-  optionRowPressed: { opacity: 0.7 },
-  optionText: { flex: 1, gap: 2 },
+  pressed: { opacity: 0.65 },
+  optionText: { flex: 1, gap: 1 },
 
   indicator: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: color.inkMuted,
+    width: 20,
+    height: 20,
+    borderWidth: 1.5,
+    borderColor: color.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
   indicatorCircle: { borderRadius: radius.full },
-  indicatorSquare: { borderRadius: 6 },
+  indicatorSquare: { borderRadius: radius.xs },
   indicatorSelected: { borderColor: color.brand, backgroundColor: color.brand },
   indicatorDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: radius.full,
     backgroundColor: color.onBrand,
   },
   // Palito rotado con dos bordes: una tilde sin depender de una fuente de iconos.
   checkMark: {
-    width: 6,
-    height: 11,
+    width: 5,
+    height: 10,
     borderRightWidth: 2,
     borderBottomWidth: 2,
     borderColor: color.onBrand,
@@ -450,7 +547,7 @@ const styles = StyleSheet.create({
 
   choiceCard: {
     flex: 1,
-    minHeight: 88,
+    minHeight: 92,
     paddingVertical: space.md,
     paddingHorizontal: space.sm,
     borderRadius: radius.md,
@@ -470,10 +567,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: space.sm,
     right: space.sm,
-    width: 8,
-    height: 8,
+    width: 16,
+    height: 16,
     borderRadius: radius.full,
     backgroundColor: color.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceCheckMark: {
+    width: 4,
+    height: 8,
+    borderRightWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: color.onBrand,
+    transform: [{ rotate: '45deg' }],
+    marginTop: -1,
   },
 
   segmented: {
@@ -481,23 +589,22 @@ const styles = StyleSheet.create({
     gap: space.xs,
     padding: space.xs,
     borderRadius: radius.md,
-    // Superficie blanca con borde, y no `surfaceSunken`: el fondo de pantalla YA es
-    // hundido, así que un track hundido desaparece y el control deja de leerse como
-    // control. La pista tiene que contrastar con lo que hay detrás.
-    backgroundColor: color.surface,
+    backgroundColor: color.surfaceMuted,
     borderWidth: 1,
     borderColor: color.border,
   },
   segment: {
     flex: 1,
-    minHeight: touchTarget - 8,
+    minHeight: touchTarget - 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.sm,
   },
-  segmentSelected: { backgroundColor: color.brandSoft },
+  // Relleno índigo pleno en el segmento activo: es lo que hace que el control se lea
+  // como un interruptor de modo y no como dos botones sueltos.
+  segmentSelected: { backgroundColor: color.brand },
 
-  field: { gap: space.xs },
+  field: { gap: space.xs2 },
   fieldLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -507,14 +614,15 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: color.border,
+    borderColor: color.borderStrong,
     backgroundColor: color.surface,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
-    fontSize: 16,
+    fontSize: 15,
     color: color.ink,
   },
-  inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 84, textAlignVertical: 'top' },
+  inputInvalid: { borderColor: color.danger },
 
   stepper: {
     flexDirection: 'row',
@@ -525,20 +633,20 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
   },
   stepperButton: { alignItems: 'center', justifyContent: 'center' },
-  stepperValue: { minWidth: 28, textAlign: 'center' },
-  minusBar: { width: 14, height: 2, borderRadius: 1, backgroundColor: color.ink },
-  plusBar: {
+  stepperValue: { minWidth: 26, textAlign: 'center' },
+  barH: { width: 13, height: 1.5, borderRadius: 1, backgroundColor: color.ink },
+  barV: {
     position: 'absolute',
-    width: 2,
-    height: 14,
+    width: 1.5,
+    height: 13,
     borderRadius: 1,
     backgroundColor: color.ink,
   },
-  stepperGlyphDisabled: { backgroundColor: color.inkDisabled },
+  glyphDisabled: { backgroundColor: color.inkDisabled },
 
   badge: {
     position: 'absolute',
-    top: -6,
+    top: -5,
     right: -10,
     minWidth: 18,
     height: 18,
@@ -547,21 +655,22 @@ const styles = StyleSheet.create({
     backgroundColor: color.brand,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: color.surface,
   },
+  badgeText: { lineHeight: 14 },
 
   chip: {
     alignSelf: 'flex-start',
     paddingHorizontal: space.sm,
-    paddingVertical: space.xs,
-    borderRadius: radius.full,
+    paddingVertical: 3,
+    borderRadius: radius.xs,
   },
-  chipBrand: { backgroundColor: color.brandSoft },
-  chipSuccess: { backgroundColor: color.successSoft },
 
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: space.xs,
+    paddingVertical: space.xs2,
   },
 });

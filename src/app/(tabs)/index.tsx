@@ -1,17 +1,20 @@
 /**
  * Inicio — Forno
  *
- * La pantalla tiene que servir a dos modos de uso sin obligar a ninguno a pasar por el
- * camino del otro (ver docs/01-investigacion.md §4):
+ * La pantalla sirve a dos modos de uso sin obligar a ninguno a pasar por el camino del
+ * otro (ver docs/01-investigacion.md §4):
  *
  * — Modo recompra: el bloque "Tu último pedido" está sobre el pliegue. Dos toques hasta
  *   la confirmación. Es el camino que recorre la mayor parte del volumen.
  * — Modo exploración: las más pedidas y el menú completo empiezan inmediatamente debajo,
  *   en el mismo scroll. No en otra pestaña.
  *
- * Si no hay historial, el bloque de recompra no se renderiza. No queda un placeholder
- * gris ocupando el mejor espacio de la app: es exactamente lo que critiqué de la App C
- * en el teardown.
+ * Si no hay historial, el bloque de recompra no se renderiza: no queda un placeholder
+ * gris ocupando el mejor espacio de la app.
+ *
+ * Visualmente sigue el lenguaje del panel: encabezado sobre superficie blanca, tarjetas
+ * con radio de 10 y sombra tenue, y el resumen del último pedido resuelto con la misma
+ * fila de métricas que usaría un tablero de ventas.
  */
 
 import { useRouter } from 'expo-router';
@@ -20,18 +23,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
 import { PizzaArt } from '@/design-system/pizza-art';
-import { Card, Chip } from '@/design-system/primitives';
+import { Card, Chip, Divider, StatTile } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
-import { color, radius, space, touchTarget } from '@/design-system/tokens';
-import { formatPrice, formatRelativeDay } from '@/domain/format';
-import { PIZZAS } from '@/domain/menu';
+import { color, elevation, radius, space } from '@/design-system/tokens';
+import { formatPrice, formatRelativeDay, pluralizeItems } from '@/domain/format';
+import { ETA_MAX, ETA_MIN, PIZZAS } from '@/domain/menu';
 import { describeLine, priceFrom } from '@/domain/pricing';
 import type { Order, Pizza } from '@/domain/types';
 import { useOrder } from '@/store/order-store';
 
 /** En producción viene del perfil. Acá alcanza para que el saludo no sea genérico. */
 const USER_NAME = 'Carlos';
+
+/** Saludo según la hora. Un "Buenas noches" fijo a las 9 de la mañana se nota. */
+function greeting(hour: number): string {
+  if (hour < 6) return 'Buenas madrugadas';
+  if (hour < 13) return 'Buen día';
+  if (hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -42,55 +53,59 @@ export default function HomeScreen() {
 
   const handleRepeat = () => {
     // Va al carrito y no directo al checkout: un toque más, a cambio de que el usuario
-    // vea qué está comprando y pueda ajustarlo. Elimina el "todo o nada" de la App C.
+    // vea qué está comprando y pueda ajustarlo antes de confirmar.
     if (repeatLastOrder()) router.push('/carrito');
   };
 
   return (
     <Screen>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.lg }]}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.greeting}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.header, { paddingTop: insets.top + space.xl }]}>
+          <Text variant="micro" tone="secondary">
+            {greeting(new Date().getHours())}
+          </Text>
           <Text variant="display">Hola, {USER_NAME}</Text>
-          <View style={styles.addressRow}>
-            <Text variant="caption" tone="secondary">
-              Enviar a:{' '}
-            </Text>
-            <Text variant="captionStrong" tone="secondary" numberOfLines={1} style={styles.address}>
+
+          {/* La dirección como objeto con superficie propia, no como texto suelto: es el
+              dato que el usuario verifica primero y el que más cambia (casa vs. oficina). */}
+          <View style={styles.addressPill}>
+            <View style={styles.pin} />
+            <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
               {address}
             </Text>
           </View>
         </View>
 
-        {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
+        <View style={styles.body}>
+          {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
 
-        <Section title="Las más pedidas">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.popularRow}>
-            {popular.map((pizza) => (
-              <PopularCard
-                key={pizza.id}
-                pizza={pizza}
-                onPress={() => router.push(`/constructor/${pizza.id}`)}
-              />
-            ))}
-          </ScrollView>
-        </Section>
+          <Section title="Las más pedidas" hint="Lo que más sale del horno">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.popularRow}>
+              {popular.map((pizza) => (
+                <PopularCard
+                  key={pizza.id}
+                  pizza={pizza}
+                  onPress={() => router.push(`/constructor/${pizza.id}`)}
+                />
+              ))}
+            </ScrollView>
+          </Section>
 
-        <Section title="Todo el menú">
-          <View style={styles.menuList}>
-            {PIZZAS.map((pizza) => (
-              <MenuRow
-                key={pizza.id}
-                pizza={pizza}
-                onPress={() => router.push(`/constructor/${pizza.id}`)}
-              />
-            ))}
-          </View>
-        </Section>
+          <Section title="Todo el menú" hint={`${PIZZAS.length} pizzas disponibles`}>
+            <View style={styles.menuList}>
+              {PIZZAS.map((pizza) => (
+                <MenuRow
+                  key={pizza.id}
+                  pizza={pizza}
+                  onPress={() => router.push(`/constructor/${pizza.id}`)}
+                />
+              ))}
+            </View>
+          </Section>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -101,6 +116,7 @@ export default function HomeScreen() {
 function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void }) {
   // Resumen en una línea: el usuario reconoce su pedido sin tener que leer un detalle.
   const summary = order.lines.map(describeLine).filter(Boolean).join(' · ');
+  const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
 
   return (
     <Card style={styles.lastOrderCard}>
@@ -111,18 +127,26 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
         </Text>
       </View>
 
-      <Text variant="h3" numberOfLines={2}>
+      <Text variant="h3" numberOfLines={2} style={styles.lastOrderTitle}>
         {summary}
       </Text>
-      <Text variant="caption" tone="secondary">
-        {formatPrice(order.total)} · {order.deliveryMode === 'delivery' ? 'Delivery' : 'Retiro'}
-      </Text>
+
+      {/* Fila de métricas: el dato manda, la etiqueta acompaña. Le da al bloque la
+          densidad de un tablero y responde de un vistazo "¿qué estoy por repetir?". */}
+      <View style={styles.statsRow}>
+        <StatTile value={String(itemCount)} label={pluralizeItems(itemCount).split(' ')[1]} />
+        <View style={styles.statDivider} />
+        <StatTile value={formatPrice(order.total)} label="Total" tone="brand" />
+        <View style={styles.statDivider} />
+        <StatTile value={`${ETA_MIN}-${ETA_MAX}'`} label="Minutos" />
+      </View>
+
+      <Divider style={styles.lastOrderDivider} />
 
       <Button
         label="Repetir pedido"
         onPress={onRepeat}
         accessibilityHint="Carga el pedido anterior en el carrito para que puedas revisarlo"
-        style={styles.repeatButton}
       />
     </Card>
   );
@@ -130,12 +154,25 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
 
 /* ── Catálogo ─────────────────────────────────────────────────────────────── */
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
-      <Text variant="h2" style={styles.sectionTitle}>
-        {title}
-      </Text>
+      <View style={styles.sectionHead}>
+        <Text variant="h2">{title}</Text>
+        {hint ? (
+          <Text variant="micro" tone="secondary">
+            {hint}
+          </Text>
+        ) : null}
+      </View>
       {children}
     </View>
   );
@@ -149,13 +186,16 @@ function PopularCard({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) 
       accessibilityLabel={`${pizza.name}, desde ${formatPrice(priceFrom(pizza.id))}`}
       style={({ pressed }) => [styles.popularCard, pressed && styles.pressed]}>
       <View style={styles.popularArt}>
-        <PizzaArt diameter={96} baseToppingIds={pizza.baseToppingIds} />
+        <PizzaArt diameter={92} baseToppingIds={pizza.baseToppingIds} />
       </View>
       <Text variant="captionStrong" numberOfLines={1}>
         {pizza.name}
       </Text>
       <Text variant="micro" tone="secondary">
-        Desde {formatPrice(priceFrom(pizza.id))}
+        Desde{' '}
+        <Text variant="micro" tone="brand">
+          {formatPrice(priceFrom(pizza.id))}
+        </Text>
       </Text>
     </Pressable>
   );
@@ -168,12 +208,14 @@ function MenuRow({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
       style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
-      <PizzaArt diameter={72} baseToppingIds={pizza.baseToppingIds} />
+      <View style={styles.menuArt}>
+        <PizzaArt diameter={60} baseToppingIds={pizza.baseToppingIds} />
+      </View>
 
       <View style={styles.menuText}>
         <Text variant="bodyStrong">{pizza.name}</Text>
         {/* Dos líneas como techo: una descripción larga empuja el precio fuera de vista. */}
-        <Text variant="caption" tone="secondary" numberOfLines={2}>
+        <Text variant="micro" tone="secondary" numberOfLines={2}>
           {pizza.description}
         </Text>
         <Text variant="captionStrong" tone="brand">
@@ -191,57 +233,111 @@ function MenuRow({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: space.huge, gap: space.xxl },
+  content: { paddingBottom: space.huge },
 
-  greeting: { paddingHorizontal: space.lg, gap: space.xs },
-  addressRow: { flexDirection: 'row', alignItems: 'center' },
-  address: { flexShrink: 1 },
+  header: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xxl,
+    backgroundColor: color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
+    gap: space.xs,
+  },
+  addressPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    alignSelf: 'flex-start',
+    marginTop: space.sm,
+    paddingVertical: space.xs2,
+    paddingHorizontal: space.md,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
+    maxWidth: '100%',
+  },
+  pin: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: color.brand,
+  },
+  addressText: { flexShrink: 1 },
 
-  lastOrderCard: { marginHorizontal: space.lg, gap: space.sm },
+  body: { padding: space.xl, gap: space.xxl },
+
+  lastOrderCard: { gap: space.md, ...elevation.raised },
   lastOrderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  repeatButton: { marginTop: space.sm },
+  lastOrderTitle: { marginTop: -space.xs },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceSunken,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.border },
+  lastOrderDivider: { marginTop: space.xs },
 
   section: { gap: space.md },
-  sectionTitle: { paddingHorizontal: space.lg },
+  sectionHead: { gap: 1 },
 
-  popularRow: { paddingHorizontal: space.lg, gap: space.md },
+  popularRow: { gap: space.md, paddingRight: space.xs },
   popularCard: {
-    width: 128,
+    width: 124,
     padding: space.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.card,
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
-    gap: 2,
+    gap: 1,
+    ...elevation.card,
   },
   popularArt: { alignItems: 'center', marginBottom: space.sm },
 
-  menuList: { paddingHorizontal: space.lg, gap: space.md },
+  menuList: { gap: space.md },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     padding: space.md,
-    borderRadius: radius.lg,
+    borderRadius: radius.card,
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
+    ...elevation.card,
   },
-  menuText: { flex: 1, gap: 2 },
-  addGlyph: {
-    width: touchTarget - 12,
-    height: touchTarget - 12,
-    borderRadius: radius.full,
-    backgroundColor: color.brandSoft,
+  // La ilustración sobre su propio cuadro gris: separa el producto de la ficha y le da
+  // el ritmo de fila de tabla que tiene el panel.
+  menuArt: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBarH: { width: 14, height: 2, borderRadius: 1, backgroundColor: color.brand },
-  addBarV: { position: 'absolute', width: 2, height: 14, borderRadius: 1, backgroundColor: color.brand },
+  menuText: { flex: 1, gap: 1 },
+  addGlyph: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    backgroundColor: color.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBarH: { width: 12, height: 1.5, borderRadius: 1, backgroundColor: color.onBrand },
+  addBarV: {
+    position: 'absolute',
+    width: 1.5,
+    height: 12,
+    borderRadius: 1,
+    backgroundColor: color.onBrand,
+  },
 
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: 0.65 },
 });

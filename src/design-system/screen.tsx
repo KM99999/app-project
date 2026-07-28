@@ -11,7 +11,7 @@ import { Pressable, StyleSheet, View, type ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from './text';
-import { color, elevation, space, touchTarget } from './tokens';
+import { color, elevation, radius, space } from './tokens';
 
 export function Screen({ style, ...rest }: ViewProps) {
   return <View style={[styles.screen, style]} {...rest} />;
@@ -45,11 +45,11 @@ export function ScreenHeader({
       ) : null}
 
       <View style={styles.headerText}>
-        <Text variant="h2" numberOfLines={1}>
+        <Text variant="h3" numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" tone="secondary" numberOfLines={1}>
+          <Text variant="micro" tone="secondary" numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}
@@ -95,22 +95,27 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border,
   },
   headerText: { flex: 1, gap: 2 },
+  // Botón de volver como cuadrado con borde: en el lenguaje del panel los controles de
+  // navegación son objetos con superficie propia, no glifos sueltos flotando.
   backButton: {
-    width: touchTarget,
-    height: touchTarget,
-    marginLeft: -space.md,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   // Chevron con dos bordes rotados: sin fuente de iconos, nítido en cualquier densidad.
   chevron: {
-    width: 11,
-    height: 11,
-    borderLeftWidth: 2,
-    borderBottomWidth: 2,
+    width: 9,
+    height: 9,
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
     borderColor: color.ink,
     transform: [{ rotate: '45deg' }],
-    marginLeft: 4,
+    marginLeft: 3,
   },
   pressed: { opacity: 0.6 },
   stickyBar: {

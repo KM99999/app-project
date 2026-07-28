@@ -1,0 +1,65 @@
+name: Publicar prototipo web
+
+# Publica el export estático de Expo en GitHub Pages para que el cliente pueda abrir el
+# prototipo desde el teléfono, sin instalar nada.
+#
+# Requiere una acción manual, una sola vez: Settings → Pages → Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un despliegue por vez; si se empujan dos commits seguidos, gana el último.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verificar tipos
+        run: npx tsc --noEmit
+
+      - name: Exportar build web
+        # Pages sirve el sitio bajo /app-project/, así que el export necesita ese prefijo.
+        # app.config.ts lo aplica solo cuando esta variable está definida.
+        env:
+          EXPO_PUBLIC_BASE_URL: /app-project
+        run: npx expo export --platform web
+
+      # Expo genera la carpeta _expo/. Sin este archivo, Jekyll ignora todo lo que
+      # empieza con guión bajo y el sitio queda sin JavaScript.
+      - name: Desactivar Jekyll
+        run: touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

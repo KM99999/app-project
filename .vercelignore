@@ -1,0 +1,9 @@
+# Qué NO subir a Vercel al desplegar.
+
+node_modules
+dist
+.expo
+
+# Proyecto Next.js independiente que vive en esta carpeta. No forma parte de la app de
+# Forno; sin esta línea se suben ~300 archivos ajenos en cada despliegue.
+nextjs-admin-dashboard

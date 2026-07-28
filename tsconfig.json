@@ -16,5 +16,13 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    // Proyecto Next.js independiente que vive en esta carpeta. No es parte de la app
+    // de Forno: sin excluirlo, `npm run typecheck` intenta compilarlo y falla con
+    // cientos de errores por dependencias que este proyecto no tiene instaladas.
+    "nextjs-admin-dashboard"
   ]
 }

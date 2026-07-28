@@ -37,12 +37,28 @@ import {
   DEFAULT_SIZE_ID,
   getPizza,
   getSize,
+  PIZZAS,
   SIZES,
   TOPPINGS,
 } from '@/domain/menu';
 import { priceOfPizza } from '@/domain/pricing';
 import type { Addon, CrustId, PizzaConfig, SizeId, ToppingSelection } from '@/domain/types';
 import { useOrder } from '@/store/order-store';
+
+/**
+ * Pre-renderiza una página por pizza en el export estático.
+ *
+ * Sin esto, el export genera un único `constructor/[pizzaId].html`, que ningún hosting
+ * estático sabe servir cuando alguien entra directo a `/constructor/napolitana` o
+ * recarga la página estando en el Constructor: devuelve 404. Con esto se emite
+ * `constructor/napolitana.html`, `constructor/muzzarella.html`, etc.
+ *
+ * Se resuelve en el build y no con reglas de reescritura del hosting, así funciona igual
+ * en Vercel, en GitHub Pages o en cualquier servidor de archivos.
+ */
+export function generateStaticParams(): Record<string, string>[] {
+  return PIZZAS.map((pizza) => ({ pizzaId: pizza.id }));
+}
 
 export default function BuilderScreen() {
   const router = useRouter();

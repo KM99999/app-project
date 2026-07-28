@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/design-system/button';
+import { narrowContent } from '@/design-system/layout';
 import { PizzaArt } from '@/design-system/pizza-art';
 import { ChoiceCard, OptionRow, SectionHeader } from '@/design-system/primitives';
 import { Screen, ScreenHeader, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
@@ -125,7 +126,7 @@ export default function BuilderScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, narrowContent]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
         {/* Vista previa: refleja tamaño, masa e ingredientes en el momento en que se eligen. */}

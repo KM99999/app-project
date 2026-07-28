@@ -9,20 +9,20 @@
  * — Modo exploración: las más pedidas y el menú completo empiezan inmediatamente debajo,
  *   en el mismo scroll. No en otra pestaña.
  *
- * Si no hay historial, el bloque de recompra no se renderiza: no queda un placeholder
- * gris ocupando el mejor espacio de la app.
+ * En escritorio el contenido tiene techo de ancho y el menú pasa a dos columnas. Sin eso,
+ * una fila de menú cruza toda la pantalla y deja de poder leerse de un vistazo: la
+ * ilustración queda a un extremo y el precio al otro.
  *
- * Visualmente sigue el lenguaje del panel: encabezado sobre superficie blanca, tarjetas
- * con radio de 10 y sombra tenue, y el resumen del último pedido resuelto con la misma
- * fila de métricas que usaría un tablero de ventas.
+ * Las secciones se registran para que la barra lateral pueda desplazarse hasta ellas.
  */
 
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
+import { Bounded, useIsWide } from '@/design-system/layout';
 import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Chip, Divider, StatTile } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
@@ -33,6 +33,7 @@ import { ETA_MAX, ETA_MIN, PIZZAS } from '@/domain/menu';
 import { describeLine, priceFrom } from '@/domain/pricing';
 import type { Order, Pizza } from '@/domain/types';
 import { useOrder } from '@/store/order-store';
+import { useSectionNav, type SectionId } from '@/store/section-nav';
 
 /** En producción viene del perfil. Acá alcanza para que el saludo no sea genérico. */
 const USER_NAME = 'Carlos';
@@ -55,7 +56,7 @@ function greeting(hour: number): string {
  * salte cuando aparece el texto real.
  */
 function useGreeting(): string {
-  const [value, setValue] = useState(' ');
+  const [value, setValue] = useState(' ');
   useEffect(() => setValue(greeting(new Date().getHours())), []);
   return value;
 }
@@ -63,8 +64,29 @@ function useGreeting(): string {
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isWide = useIsWide();
   const { lastOrder, address, repeatLastOrder } = useOrder();
+  const { request } = useSectionNav();
   const salutation = useGreeting();
+
+  const scrollRef = useRef<ScrollView>(null);
+  // Posición vertical de cada sección dentro del contenido del scroll. Se llena con
+  // onLayout, así que no hace falta medir nada a mano ni hardcodear alturas.
+  const offsets = useRef<Record<SectionId, number>>({ populares: 0, menu: 0 });
+
+  useEffect(() => {
+    if (!request) return;
+    scrollRef.current?.scrollTo({
+      // Un respiro por encima del encabezado de la sección, para que no quede pegado
+      // al borde superior.
+      y: Math.max(offsets.current[request.section] - space.lg, 0),
+      animated: true,
+    });
+  }, [request]);
+
+  const captureOffset = (section: SectionId) => (event: LayoutChangeEvent) => {
+    offsets.current[section] = event.nativeEvent.layout.y;
+  };
 
   const popular = PIZZAS.filter((pizza) => pizza.popular);
 
@@ -76,52 +98,78 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { paddingTop: insets.top + space.xl }]}>
-          <Text variant="micro" tone="secondary">
-            {salutation}
-          </Text>
-          <Text variant="display">Hola, {USER_NAME}</Text>
-
-          {/* La dirección como objeto con superficie propia, no como texto suelto: es el
-              dato que el usuario verifica primero y el que más cambia (casa vs. oficina). */}
-          <View style={styles.addressPill}>
-            <View style={styles.pin} />
-            <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
-              {address}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        <View style={[styles.header, { paddingTop: (isWide ? space.xxxl : insets.top) + space.xl }]}>
+          <Bounded>
+            <Text variant="micro" tone="secondary">
+              {salutation}
             </Text>
-          </View>
+            <Text variant="display">Hola, {USER_NAME}</Text>
+
+            {/* La dirección como objeto con superficie propia, no como texto suelto: es el
+                dato que el usuario verifica primero y el que más cambia. */}
+            <View style={styles.addressPill}>
+              <View style={styles.pin} />
+              <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
+                {address}
+              </Text>
+            </View>
+          </Bounded>
         </View>
 
         <View style={styles.body}>
-          {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
+          <Bounded style={styles.stack}>
+            {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
 
-          <Section title="Las más pedidas" hint="Lo que más sale del horno">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.popularRow}>
-              {popular.map((pizza) => (
-                <PopularCard
-                  key={pizza.id}
-                  pizza={pizza}
-                  onPress={() => router.push(`/constructor/${pizza.id}`)}
-                />
-              ))}
-            </ScrollView>
-          </Section>
+            <View onLayout={captureOffset('populares')} style={styles.section}>
+              <SectionHead title="Las más pedidas" hint="Lo que más sale del horno" />
 
-          <Section title="Todo el menú" hint={`${PIZZAS.length} pizzas disponibles`}>
-            <View style={styles.menuList}>
-              {PIZZAS.map((pizza) => (
-                <MenuRow
-                  key={pizza.id}
-                  pizza={pizza}
-                  onPress={() => router.push(`/constructor/${pizza.id}`)}
-                />
-              ))}
+              {isWide ? (
+                // En escritorio hay ancho de sobra: se despliegan todas y se evita un
+                // scroll horizontal que en desktop nadie descubre.
+                <View style={styles.popularGrid}>
+                  {popular.map((pizza) => (
+                    <PopularCard
+                      key={pizza.id}
+                      pizza={pizza}
+                      wide
+                      onPress={() => router.push(`/constructor/${pizza.id}`)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.popularRow}>
+                  {popular.map((pizza) => (
+                    <PopularCard
+                      key={pizza.id}
+                      pizza={pizza}
+                      onPress={() => router.push(`/constructor/${pizza.id}`)}
+                    />
+                  ))}
+                </ScrollView>
+              )}
             </View>
-          </Section>
+
+            <View onLayout={captureOffset('menu')} style={styles.section}>
+              <SectionHead title="Todo el menú" hint={`${PIZZAS.length} pizzas disponibles`} />
+              <View style={[styles.menuList, isWide && styles.menuGrid]}>
+                {PIZZAS.map((pizza) => (
+                  <MenuRow
+                    key={pizza.id}
+                    pizza={pizza}
+                    wide={isWide}
+                    onPress={() => router.push(`/constructor/${pizza.id}`)}
+                  />
+                ))}
+              </View>
+            </View>
+          </Bounded>
         </View>
       </ScrollView>
     </Screen>
@@ -171,39 +219,40 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
 
 /* ── Catálogo ─────────────────────────────────────────────────────────────── */
 
-function Section({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+function SectionHead({ title, hint }: { title: string; hint?: string }) {
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <Text variant="h2">{title}</Text>
-        {hint ? (
-          <Text variant="micro" tone="secondary">
-            {hint}
-          </Text>
-        ) : null}
-      </View>
-      {children}
+    <View style={styles.sectionHead}>
+      <Text variant="h2">{title}</Text>
+      {hint ? (
+        <Text variant="micro" tone="secondary">
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-function PopularCard({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) {
+function PopularCard({
+  pizza,
+  onPress,
+  wide = false,
+}: {
+  pizza: Pizza;
+  onPress: () => void;
+  wide?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${pizza.name}, desde ${formatPrice(priceFrom(pizza.id))}`}
-      style={({ pressed }) => [styles.popularCard, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.popularCard,
+        wide && styles.popularCardWide,
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.popularArt}>
-        <PizzaArt diameter={92} baseToppingIds={pizza.baseToppingIds} />
+        <PizzaArt diameter={wide ? 116 : 92} baseToppingIds={pizza.baseToppingIds} />
       </View>
       <Text variant="captionStrong" numberOfLines={1}>
         {pizza.name}
@@ -218,13 +267,25 @@ function PopularCard({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) 
   );
 }
 
-function MenuRow({ pizza, onPress }: { pizza: Pizza; onPress: () => void }) {
+function MenuRow({
+  pizza,
+  onPress,
+  wide = false,
+}: {
+  pizza: Pizza;
+  onPress: () => void;
+  wide?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
-      style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.menuRow,
+        wide && styles.menuRowWide,
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.menuArt}>
         <PizzaArt diameter={60} baseToppingIds={pizza.baseToppingIds} />
       </View>
@@ -258,7 +319,6 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderBottomWidth: 1,
     borderBottomColor: color.border,
-    gap: space.xs,
   },
   addressPill: {
     flexDirection: 'row',
@@ -272,38 +332,16 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceMuted,
     maxWidth: '100%',
   },
-  pin: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: color.brand,
-  },
+  pin: { width: 8, height: 8, borderRadius: radius.full, backgroundColor: color.brand },
   addressText: { flexShrink: 1 },
 
-  body: { padding: space.xl, gap: space.xxl },
-
-  lastOrderCard: { gap: space.md, ...elevation.raised },
-  lastOrderHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  lastOrderTitle: { marginTop: -space.xs },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.border },
-  lastOrderDivider: { marginTop: space.xs },
-
+  body: { padding: space.xl },
+  stack: { gap: space.xxl },
   section: { gap: space.md },
   sectionHead: { gap: 1 },
 
   popularRow: { gap: space.md, paddingRight: space.xs },
+  popularGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
   popularCard: {
     width: 124,
     padding: space.md,
@@ -314,9 +352,13 @@ const styles = StyleSheet.create({
     gap: 1,
     ...elevation.card,
   },
+  popularCardWide: { width: 176, padding: space.lg },
   popularArt: { alignItems: 'center', marginBottom: space.sm },
 
   menuList: { gap: space.md },
+  // Dos columnas en escritorio. `48%` y no `50%` para que el `gap` no fuerce un salto de
+  // línea por redondeo de subpíxeles.
+  menuGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,6 +370,7 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     ...elevation.card,
   },
+  menuRowWide: { width: '48%' },
   // La ilustración sobre su propio cuadro gris: separa el producto de la ficha y le da
   // el ritmo de fila de tabla que tiene el panel.
   menuArt: {
@@ -355,6 +398,24 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     backgroundColor: color.onBrand,
   },
+
+  lastOrderCard: { gap: space.md, ...elevation.raised },
+  lastOrderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastOrderTitle: { marginTop: -space.xs },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceSunken,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.border },
+  lastOrderDivider: { marginTop: space.xs },
 
   pressed: { opacity: 0.65 },
 });

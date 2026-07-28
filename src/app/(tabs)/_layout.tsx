@@ -1,17 +1,23 @@
 /**
  * Pestañas — Forno
  *
- * Dos y solo dos: Inicio y Carrito.
+ * La navegación móvil: barra inferior, que es la convención nativa de iOS y Android y la
+ * que cae en la zona del pulgar.
  *
- * Perfil y Pedidos son etapa 2. Agregarlos ahora vacíos le enseñaría al usuario que hay
- * lugares de la app donde no vale la pena entrar, y esa lección después cuesta revertirla.
+ * En escritorio se oculta, porque ahí la navegación la lleva la barra lateral (montada en
+ * el layout raíz). Duplicar los mismos destinos en dos lugares a la vez solo genera dudas
+ * sobre cuál es el "verdadero".
+ *
+ * Dos y solo dos destinos: Inicio y Carrito. Perfil y Pedidos son etapa 2; agregarlos
+ * ahora vacíos le enseñaría al usuario que hay lugares donde no vale la pena entrar.
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useIsWide } from '@/design-system/layout';
 import { Badge } from '@/design-system/primitives';
 import { color, space, type } from '@/design-system/tokens';
 import { useOrder } from '@/store/order-store';
@@ -19,6 +25,7 @@ import { useOrder } from '@/store/order-store';
 export default function TabsLayout() {
   const { itemCount } = useOrder();
   const insets = useSafeAreaInsets();
+  const isWide = useIsWide();
 
   return (
     <Tabs
@@ -26,19 +33,19 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: color.brand,
         tabBarInactiveTintColor: color.inkMuted,
-        tabBarStyle: {
-          backgroundColor: color.surface,
-          borderTopColor: color.border,
-          // Icono (24) más etiqueta (lineHeight 20) necesitan ~54px de caja de contenido.
-          // Con el alto por defecto no entran y la etiqueta queda cortada al ras del
-          // borde inferior en web. El alto deja 58: 80 − 8 de arriba − 14 de abajo.
-          // Medido en el navegador, no estimado.
-          height: 80 + insets.bottom,
-          paddingTop: space.sm,
-          paddingBottom: insets.bottom + 14,
-        },
-        // `lineHeight` explícito: sin él, la altura de línea la decide la plataforma y
-        // el cálculo de arriba deja de ser predecible.
+        tabBarStyle: isWide
+          ? styles.tabBarHidden
+          : {
+              backgroundColor: color.surface,
+              borderTopColor: color.border,
+              // Icono (24) más etiqueta (lineHeight 20) necesitan ~54px de caja. Con el
+              // alto por defecto la etiqueta queda cortada al ras del borde inferior en
+              // web. Deja 58: 80 − 8 de arriba − 14 de abajo.
+              // Medido en el navegador, no estimado.
+              height: 80 + insets.bottom,
+              paddingTop: space.sm,
+              paddingBottom: insets.bottom + 14,
+            },
         tabBarLabelStyle: {
           fontSize: type.micro.fontSize,
           lineHeight: type.micro.lineHeight,
@@ -70,3 +77,7 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarHidden: { display: 'none' },
+});

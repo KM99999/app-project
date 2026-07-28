@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/design-system/button';
+import { narrowContent } from '@/design-system/layout';
 import {
   Card,
   Divider,
@@ -82,7 +83,7 @@ export default function CheckoutScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, narrowContent]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           <View style={styles.section}>

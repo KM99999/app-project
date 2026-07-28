@@ -407,16 +407,24 @@ export function Badge({ count }: { count: number }) {
   );
 }
 
-/** Etiqueta informativa: "Envío gratis", "Más pedida". */
+/**
+ * Etiqueta informativa: "Envío gratis", "Más pedida".
+ *
+ * `alignSelf: 'flex-start'` evita que la píldora se estire a lo ancho del contenedor,
+ * pero también gana sobre el `alignItems` del padre. Por eso existe `style`: en un bloque
+ * centrado hay que poder devolverla al centro.
+ */
 export function Chip({
   label,
   tone = 'brand',
+  style,
 }: {
   label: string;
   tone?: 'brand' | 'success' | 'neutral';
+  style?: ViewStyle;
 }) {
   return (
-    <View style={[styles.chip, chipTone[tone]]}>
+    <View style={[styles.chip, chipTone[tone], style]}>
       <Text variant="micro" tone={tone === 'neutral' ? 'secondary' : tone}>
         {label}
       </Text>

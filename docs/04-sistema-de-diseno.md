@@ -210,7 +210,61 @@ Sin migración de datos, sin refactor del carrito, sin tocar el motor de precios
 
 ---
 
-## 8. Lo que este sistema deja afuera
+## 8. Layout responsivo
+
+La app nació como diseño móvil. En una pantalla ancha ese layout se estira: las tarjetas de
+métricas se separan hasta perder relación entre sí y una fila de menú cruza 1900px, con la
+ilustración en un extremo y el precio en el otro.
+
+**Corte en 1024px** (el `lg` del panel de origen), en
+[`layout.tsx`](../src/design-system/layout.tsx).
+
+| | Móvil (< 1024) | Escritorio (≥ 1024) |
+|---|---|---|
+| Navegación | Barra de pestañas inferior | **Barra lateral** de 280px |
+| Menú | Una columna | Dos columnas |
+| Las más pedidas | Scroll horizontal | Todas desplegadas |
+| Ancho del contenido | Todo el ancho | 1120 en grilla · 760 en una columna |
+
+### La barra lateral
+
+En el formato del panel: marca arriba, ítems agrupados bajo epígrafes en mayúsculas
+(`PRINCIPAL`, `CATÁLOGO`) y el activo en índigo suave.
+
+Sus ítems son de dos clases y se comportan distinto **a propósito**:
+
+- **Rutas** — `Inicio`, `Carrito` — navegan.
+- **Secciones** — `Las más pedidas`, `Todo el menú` — desplazan dentro de Inicio, porque
+  son partes de una misma página y no destinos separados. Convertirlas en rutas obligaría
+  a recargar para volver a ver el catálogo completo.
+
+Vive en el **layout raíz**, no en el grupo de pestañas. Si viviera en las pestañas
+desaparecería al abrir el Constructor o el Checkout, que son pantallas de la pila, y el
+marco de la aplicación se desarmaría a mitad del flujo.
+
+El canal entre la barra y la pantalla es
+[`section-nav.tsx`](../src/store/section-nav.tsx): la barra pide el desplazamiento y la
+pantalla, que es la que tiene el ref del scroll, obedece. El pedido lleva un `nonce`
+incremental además del nombre de la sección — sin él, tocar dos veces el mismo ítem no
+cambiaría el estado y el segundo toque no haría nada.
+
+### La trampa del export estático
+
+`useIsWide()` devuelve **`false` en el primer render**, aunque la ventana ya sea ancha, y
+recién toma su valor real al montarse.
+
+El export es estático: el HTML se genera en el build, donde no hay ventana. Si el hook
+devolviera el ancho real de entrada, el servidor pintaría el árbol móvil y el cliente el de
+escritorio, y React abortaría la hidratación por diferencia de estructura. Es el mismo
+error #418 que apareció con el saludo según la hora, pero peor: ahí cambiaba un texto, acá
+cambiaría el árbol entero.
+
+**Regla general para este proyecto:** nada que dependa de la hora, del ancho de ventana o
+de cualquier dato que no exista en el build puede decidirse durante el primer render.
+
+---
+
+## 9. Lo que este sistema deja afuera
 
 **Es de tema claro únicamente.** El panel de origen trae tema oscuro (`gray-dark #122031`,
 `dark-2 #1F2A37`), y portarlo pide una segunda paleta completa con su propia verificación

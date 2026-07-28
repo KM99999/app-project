@@ -10,6 +10,7 @@
 import { Pressable, StyleSheet, View, type ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Bounded, CONTENT_MAX_WIDTH_NARROW } from './layout';
 import { Text } from './text';
 import { color, elevation, radius, space } from './tokens';
 
@@ -33,29 +34,31 @@ export function ScreenHeader({
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
-      {onBack ? (
-        <Pressable
-          onPress={onBack}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <View style={styles.chevron} />
-        </Pressable>
-      ) : null}
-
-      <View style={styles.headerText}>
-        <Text variant="h3" numberOfLines={1}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text variant="micro" tone="secondary" numberOfLines={1}>
-            {subtitle}
-          </Text>
+      <Bounded maxWidth={CONTENT_MAX_WIDTH_NARROW} style={styles.headerInner}>
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+            <View style={styles.chevron} />
+          </Pressable>
         ) : null}
-      </View>
 
-      {right}
+        <View style={styles.headerText}>
+          <Text variant="h3" numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text variant="micro" tone="secondary" numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+
+        {right}
+      </Bounded>
     </View>
   );
 }
@@ -71,7 +74,11 @@ export function StickyBar({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
-      {children}
+      {/* El contenido se limita igual que el de la pantalla: sin esto, en escritorio el
+          botón de confirmar cruzaría 1600px y el total quedaría a un extremo. */}
+      <Bounded maxWidth={CONTENT_MAX_WIDTH_NARROW} style={styles.stickyInner}>
+        {children}
+      </Bounded>
     </View>
   );
 }
@@ -85,15 +92,13 @@ export const STICKY_BAR_CLEARANCE = 132;
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.surfaceSunken },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
     paddingHorizontal: space.lg,
     paddingBottom: space.md,
     backgroundColor: color.surface,
     borderBottomWidth: 1,
     borderBottomColor: color.border,
   },
+  headerInner: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   headerText: { flex: 1, gap: 2 },
   // Botón de volver como cuadrado con borde: en el lenguaje del panel los controles de
   // navegación son objetos con superficie propia, no glifos sueltos flotando.
@@ -124,7 +129,7 @@ const styles = StyleSheet.create({
     borderTopColor: color.border,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
-    gap: space.md,
     ...elevation.bar,
   },
+  stickyInner: { gap: space.md },
 });

@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/design-system/button';
+import { narrowContent } from '@/design-system/layout';
 import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Divider, PriceRow } from '@/design-system/primitives';
 import { Screen, ScreenHeader, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
@@ -66,7 +67,9 @@ export default function TrackingScreen() {
     <Screen>
       <ScreenHeader title={`Pedido #${order.number}`} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, narrowContent]}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           {heroPizza ? (
             <PizzaArt

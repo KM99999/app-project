@@ -15,6 +15,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
+import { Bounded, CONTENT_MAX_WIDTH_NARROW, narrowContent } from '@/design-system/layout';
 import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Chip, Divider, PriceRow, Stepper } from '@/design-system/primitives';
 import { Screen, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
@@ -38,13 +39,17 @@ export default function CartScreen() {
   return (
     <Screen>
       <View style={[styles.header, { paddingTop: insets.top + space.lg }]}>
-        <Text variant="display">Tu pedido</Text>
-        <Text variant="caption" tone="secondary">
-          {pluralizeItems(itemCount)}
-        </Text>
+        <Bounded maxWidth={CONTENT_MAX_WIDTH_NARROW}>
+          <Text variant="display">Tu pedido</Text>
+          <Text variant="caption" tone="secondary">
+            {pluralizeItems(itemCount)}
+          </Text>
+        </Bounded>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, narrowContent]}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.lines}>
           {lines.map((line) => (
             <CartLineCard
@@ -178,7 +183,7 @@ function EmptyCart({ onBrowse }: { onBrowse: () => void }) {
             Elegí una pizza del menú y armala como más te guste.
           </Text>
         </View>
-        <Chip label="Envío gratis desde $25.000" tone="success" />
+        <Chip label="Envío gratis desde $25.000" tone="success" style={styles.emptyChip} />
         <Button label="Ver el menú" onPress={onBrowse} fullWidth={false} />
       </View>
     </Screen>
@@ -226,4 +231,5 @@ const styles = StyleSheet.create({
     gap: space.lg,
   },
   emptyText: { gap: space.sm },
+  emptyChip: { alignSelf: 'center' },
 });

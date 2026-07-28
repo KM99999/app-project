@@ -18,6 +18,7 @@
  */
 
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,10 +45,26 @@ function greeting(hour: number): string {
   return 'Buenas noches';
 }
 
+/**
+ * El saludo se resuelve **después del montaje**, nunca durante el render inicial.
+ *
+ * El export es estático: el HTML se genera en el build, con la hora de la máquina que
+ * compiló. Si el saludo se calculara en el render, el servidor escribiría "Buenas tardes"
+ * y el cliente "Buenas noches", y React aborta la hidratación por diferencia de texto
+ * (error #418). Se reserva el espacio con un carácter invisible para que la línea no
+ * salte cuando aparece el texto real.
+ */
+function useGreeting(): string {
+  const [value, setValue] = useState(' ');
+  useEffect(() => setValue(greeting(new Date().getHours())), []);
+  return value;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { lastOrder, address, repeatLastOrder } = useOrder();
+  const salutation = useGreeting();
 
   const popular = PIZZAS.filter((pizza) => pizza.popular);
 
@@ -62,7 +79,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { paddingTop: insets.top + space.xl }]}>
           <Text variant="micro" tone="secondary">
-            {greeting(new Date().getHours())}
+            {salutation}
           </Text>
           <Text variant="display">Hola, {USER_NAME}</Text>
 

@@ -605,13 +605,7 @@ function PizzaCard({
   );
 }
 
-/**
- * Bebidas, acompañamientos y postres.
- *
- * Sin fotografía: la carpeta provista solo trae pizzas. En vez de rellenar con una imagen
- * genérica que no es el producto, la tarjeta usa un panel tintado con la inicial. Se lee
- * como decisión y no como imagen faltante, y se reemplaza el día que haya fotos reales.
- */
+/** Bebidas, acompañamientos y postres. Se agregan directo al carrito, sin configurar. */
 function AddonCard({
   addon,
   onPress,
@@ -631,10 +625,16 @@ function AddonCard({
         wide ? styles.productCardWide : styles.productCardNarrow,
         pressed && styles.pressed,
       ]}>
-      <View style={[styles.photoWrap, styles.addonArt, { backgroundColor: addon.color }]}>
-        <Text variant="display" tone="onBrand">
-          {addon.name.charAt(0)}
-        </Text>
+      {/* El tinte queda de respaldo detrás de la foto: si tarda en decodificar, el hueco
+          no parpadea en gris. */}
+      <View style={[styles.photoWrap, { backgroundColor: addon.color }]}>
+        <Image
+          source={addon.image}
+          style={styles.photo}
+          contentFit="cover"
+          transition={180}
+          accessibilityLabel={addon.name}
+        />
         <View style={styles.pricePill}>
           <Text variant="captionStrong">{formatPrice(addon.price)}</Text>
         </View>

@@ -77,15 +77,17 @@ export type Pizza = {
 /** Categorías del menú. Alimentan la fila de chips de la pantalla de Inicio. */
 export type MenuCategory = 'pizzas' | 'bebidas' | 'acompanamientos' | 'postres';
 
-/** Bebidas y acompañamientos. No se personalizan. */
+/** Bebidas, acompañamientos y postres. No se personalizan. */
 export type Addon = {
   id: string;
   name: string;
   detail: string;
   price: number;
-  /** Tinte de la tarjeta. Estos productos no tienen fotografía disponible todavía. */
+  /** Tinte de respaldo, detrás de la foto mientras carga. */
   color: string;
   category: Exclude<MenuCategory, 'pizzas'>;
+  /** Fotografía del producto, empaquetada con la app. Ver la nota en `Pizza.image`. */
+  image: number;
 };
 
 /** Un ingrediente extra elegido por el usuario, con el lado al que aplica. */

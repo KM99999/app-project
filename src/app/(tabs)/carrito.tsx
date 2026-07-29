@@ -128,15 +128,12 @@ function CartLineCard({
   return (
     <Card style={styles.lineCard}>
       <View style={styles.lineTop}>
-        {isPizza && pizza ? (
-          <Image source={pizza.image} style={styles.thumb} contentFit="cover" transition={140} />
-        ) : (
-          <View style={[styles.thumb, styles.addonThumb, { backgroundColor: addon?.color ?? color.border }]}>
-            <Text variant="h3" tone="onBrand">
-              {addon?.name.charAt(0) ?? '?'}
-            </Text>
-          </View>
-        )}
+        <Image
+          source={isPizza ? pizza?.image : addon?.image}
+          style={styles.thumb}
+          contentFit="cover"
+          transition={140}
+        />
 
         <View style={styles.lineText}>
           <Text variant="bodyStrong">{title}</Text>

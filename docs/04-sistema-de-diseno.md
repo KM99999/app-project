@@ -175,10 +175,21 @@ Las imágenes se redujeron a 900px de ancho y calidad 82: **708 KB las seis**, c
 2,4 MB de los originales. En una pantalla de catálogo eso es la diferencia entre entrar de
 una y ver los huecos cargarse.
 
-**Bebidas, acompañamientos y postres no tienen foto** porque el material provisto solo
-traía pizzas. En lugar de rellenar con una imagen genérica que no es el producto, esas
-tarjetas usan un panel tintado con la inicial: se lee como decisión y no como imagen
-faltante, y se reemplaza el día que haya fotos reales.
+**Bebidas, acompañamientos y postres** usan fotos de Wikimedia Commons, recortadas al
+aspecto de la tarjeta con un ancla vertical por producto: en una botella la etiqueta no
+cae al medio, así que un recorte centrado dejaría vidrio transparente y ninguna marca
+reconocible.
+
+⚠️ **Cuatro de las cinco son CC BY-SA y obligan a dar crédito.** La lista está en
+[`assets/images/addons/CREDITOS.md`](../assets/images/addons/CREDITOS.md). Si se publican
+en la app real, la atribución tiene que viajar con ellas.
+
+**Para producción hay que reemplazarlas por fotografía propia del local**, y no solo por
+la licencia: son productos genéricos, no los que la pizzería vende. El agua es italiana de
+750 ml y el menú ofrece una de 500 ml; la cerveza es de una marca irlandesa concreta; la
+fainá es una socca de Niza. Una foto que no coincide con lo que llega a la puerta genera
+exactamente la sorpresa que este diseño busca evitar. Sirven para el prototipo y para las
+revisiones; no para vender.
 
 *(Antes existía `PizzaArt`, una ilustración procedural que dibujaba los ingredientes con
 Views nativas. Se retiró al incorporar fotografía: mantener las dos habría sido dos

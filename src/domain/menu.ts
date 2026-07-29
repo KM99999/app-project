@@ -36,12 +36,61 @@ export const TOPPINGS: Topping[] = [
   { id: 'rucula', name: 'Rúcula', price: 800, color: '#4F9E52', shape: 'leaf' },
 ];
 
+/**
+ * Bebidas, acompañamientos y postres.
+ *
+ * Las fotos vienen de Wikimedia Commons, recortadas al aspecto de la tarjeta. Son de
+ * licencia libre pero **cuatro de las cinco piden atribución** (CC BY-SA): la lista
+ * completa está en `assets/images/addons/CREDITOS.md`. Antes de salir a producción
+ * conviene reemplazarlas por fotografía propia del local, que además va a mostrar el
+ * producto real y no una botella genérica.
+ */
 export const ADDONS: Addon[] = [
-  { id: 'coca15', name: 'Coca-Cola', detail: '1.5 L', price: 2500, color: '#B03A2E', category: 'bebidas' },
-  { id: 'agua', name: 'Agua mineral', detail: '500 ml', price: 1800, color: '#7FB2D9', category: 'bebidas' },
-  { id: 'cerveza', name: 'Cerveza artesanal', detail: '473 ml', price: 2800, color: '#C68A3E', category: 'bebidas' },
-  { id: 'faina', name: 'Fainá', detail: 'Porción', price: 1900, color: '#E8B06A', category: 'acompanamientos' },
-  { id: 'postre', name: 'Flan casero', detail: 'Con dulce de leche', price: 2200, color: '#C9884A', category: 'postres' },
+  {
+    id: 'coca15',
+    name: 'Coca-Cola',
+    detail: '1.5 L',
+    price: 2500,
+    color: '#B03A2E',
+    category: 'bebidas',
+    image: require('@/assets/images/addons/coca15.jpg'),
+  },
+  {
+    id: 'agua',
+    name: 'Agua mineral',
+    detail: '500 ml',
+    price: 1800,
+    color: '#7FB2D9',
+    category: 'bebidas',
+    image: require('@/assets/images/addons/agua.jpg'),
+  },
+  {
+    id: 'cerveza',
+    name: 'Cerveza artesanal',
+    detail: '473 ml',
+    price: 2800,
+    color: '#C68A3E',
+    category: 'bebidas',
+    image: require('@/assets/images/addons/cerveza.jpg'),
+  },
+  {
+    id: 'faina',
+    name: 'Fainá',
+    detail: 'Porción',
+    price: 1900,
+    color: '#E8B06A',
+    category: 'acompanamientos',
+    image: require('@/assets/images/addons/faina.jpg'),
+  },
+  {
+    id: 'postre',
+    name: 'Flan casero',
+    detail: 'Con dulce de leche',
+    price: 2200,
+    color: '#C9884A',
+    category: 'postres',
+    image: require('@/assets/images/addons/postre.jpg'),
+  },
 ];
 
 /**

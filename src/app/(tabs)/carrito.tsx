@@ -18,7 +18,12 @@ import { Icon } from '@/design-system/icon';
 import { Image } from 'expo-image';
 
 import { Button } from '@/design-system/button';
-import { Bounded, CONTENT_MAX_WIDTH_NARROW, narrowContent } from '@/design-system/layout';
+import {
+  Bounded,
+  CONTENT_MAX_WIDTH_NARROW,
+  narrowContent,
+  useIsWide,
+} from '@/design-system/layout';
 import { Card, Chip, Divider, PriceRow, Stepper } from '@/design-system/primitives';
 import { Screen, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -33,6 +38,7 @@ export default function CartScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { lines, itemCount, deliveryMode, setQuantity } = useOrder();
+  const isWide = useIsWide();
 
   const totals = computeTotals(lines, deliveryMode);
 
@@ -94,7 +100,9 @@ export default function CartScreen() {
         </Card>
       </ScrollView>
 
-      <StickyBar>
+      {/* El carrito es pestaña y además tiene acción fija: hay que dejarle lugar a la
+          píldora de navegación, que flota por encima del contenido. */}
+      <StickyBar underFloatingNav={!isWide}>
         <Button
           label="Continuar"
           trailing={formatPrice(totals.total)}

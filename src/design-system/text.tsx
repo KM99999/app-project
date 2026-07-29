@@ -23,14 +23,19 @@ type Tone =
   | 'disabled';
 
 /**
- * Los tonos apuntan a los tokens aptos para texto, no a los de relleno. `success` es el
- * verde oscuro (4.86:1) y no el verde pleno (2.9:1), que sería ilegible.
+ * Los tonos apuntan a los tokens aptos para texto, no a los de relleno.
+ *
+ * `brand` resuelve al naranja **profundo** (5.18:1) y no al vivo (3.15:1): el vivo es un
+ * color de relleno y como texto sobre blanco quedaría por debajo del mínimo. Que el mapeo
+ * viva acá y no en cada pantalla es lo que hace que sea imposible equivocarse.
+ *
+ * `success` es el verde oscuro (4.86:1) y no el verde pleno (2.9:1), por lo mismo.
  */
 const toneColor: Record<Tone, string> = {
   default: color.ink,
   secondary: color.inkSecondary,
   muted: color.inkMuted,
-  brand: color.brand,
+  brand: color.brandText,
   success: color.success,
   warning: color.warning,
   danger: color.danger,

@@ -4,37 +4,58 @@ Todo lo de este documento está implementado en
 [`src/design-system/tokens.ts`](../src/design-system/tokens.ts). Ese archivo es la fuente
 de verdad; este documento explica el porqué.
 
-**Origen del lenguaje visual.** La paleta, la escala tipográfica, los radios y las sombras
-están alineados con el design system del panel de administración (NextAdmin): índigo como
-color de acción, tinta azul-negra, superficies blancas sobre gris frío. Así la app de
-cliente y el panel interno se leen como un mismo producto.
+**Origen del lenguaje visual.** Tomado de la referencia de diseño de app de delivery
+elegida por el cliente ([*Food Delivery App Design*, Helal
+Hossain](https://dribbble.com/shots/26904673-Food-Delivery-App-Design)): naranja vivo,
+radios grandes, fotografía protagonista y navegación flotante en píldora.
 
 ---
 
 ## 1. La idea que ordena la paleta
 
-**El chrome es frío y neutro; la comida es cálida.**
+**Interfaz cálida, fotografía al frente.**
 
-La interfaz —botones, tarjetas, controles, tipografía— usa índigo y grises azulados. La
-ilustración de la pizza conserva su paleta cálida sin tocar.
+Es un lenguaje de consumo, no de herramienta. La comida ocupa la mayor superficie de cada
+pantalla y la interfaz acompaña en temperatura en lugar de contrastar: naranja, blancos y
+un gris muy claro de fondo.
 
-No es un capricho estético. Es lo que hacen las plataformas de delivery serias: si la
-interfaz compite en saturación con el producto, la comida deja de ser lo que atrae la
-vista. Un chrome neutro enmarca, no compite. Y de paso es lo que le da el aire de producto
-moderno en lugar de folleto.
+Los radios grandes hacen la otra mitad del trabajo. Donde un panel de administración usa
+10, acá las tarjetas van en 24 y todo lo accionable es píldora completa. Con la misma
+paleta y radios chicos, el resultado se vería severo.
 
 ---
 
 ## 2. Color
 
-### Marca y acción
+### El problema del naranja, y cómo se resuelve
+
+Esto es lo primero que hay que entender de esta paleta.
+
+El naranja de la referencia (`#F26522`) da **3.15:1 sobre blanco**. Alcanza para texto
+grande (≥18.66px en negrita) y para elementos no textuales, pero **no para texto normal**,
+que necesita 4.5:1. Es la trampa clásica de estas paletas: se ven espectaculares en una
+maqueta y dejan ilegible la mitad de la app real.
+
+La solución tiene dos partes y **ninguna sacrifica el aspecto**:
+
+1. **`brand` es un color de relleno** — botones, chips activos, acentos. El texto blanco
+   encima va en 19px negrita (variante `button`), que sí califica como texto grande. La
+   referencia ya usa etiquetas grandes y gruesas, así que accesibilidad y diseño empujan
+   para el mismo lado.
+2. **`brandText` es un naranja más profundo** para texto naranja sobre blanco: precios,
+   enlaces, la palabra de acento del título.
+
+El mapeo vive en [`text.tsx`](../src/design-system/text.tsx): el tono `brand` resuelve
+**siempre** a `brandText`. Por eso es imposible equivocarse desde una pantalla.
 
 | Token | Valor | Uso | Contraste sobre blanco |
 |---|---|---|---|
-| `brand` | `#5750F1` | Acciones primarias, precios, seleccionado | **5.49:1** ✅ AA |
-| `brandPressed` | `#4338CA` | Estado presionado | — |
-| `brandSoft` | `#EEF2FF` | Fondo de chips y filas seleccionadas | fondo |
-| `brandBorder` | `#C7D2FE` | Borde de botón secundario | fondo |
+| `brand` | `#F26522` | **Relleno**: botones, chips activos | **3.15:1** ⚠️ solo texto grande |
+| `brandText` | `#C2410C` | **Texto** naranja sobre blanco | **5.18:1** ✅ AA |
+| `brandPressed` | `#D9541A` | Estado presionado | — |
+| `brandSoft` | `#FFF1EA` | Fondo de chips y filas seleccionadas | fondo |
+| `brandBorder` | `#FBD5C2` | Borde de botón secundario | fondo |
+| `accentSoft` | `#FDF3D7` | Fondo del banner promocional | fondo |
 
 ### Estados semánticos — leer con atención
 
@@ -57,15 +78,15 @@ Un punto de la línea de tiempo es una forma, no una palabra.
 
 | Token | Valor | Uso | Contraste |
 |---|---|---|---|
-| `ink` | `#111928` | Texto principal | **17.6:1** ✅ AAA |
+| `ink` | `#161312` | Texto principal | **17.4:1** ✅ AAA |
 | `inkSecondary` | `#6B7280` | Descripciones, etiquetas | **4.83:1** ✅ AA |
 | `inkMuted` | `#9CA3AF` | ⚠️ Iconos inactivos, bordes, placeholders | **2.54:1** ❌ |
 | `inkDisabled` | `#D1D5DB` | Deshabilitado | sin requisito |
 | `surface` | `#FFFFFF` | Tarjetas, barras, encabezados | — |
-| `surfaceSunken` | `#F9FAFB` | Fondo de la app | — |
-| `surfaceMuted` | `#F3F4F6` | Pistas de controles, rellenos | — |
-| `border` | `#E6EBF1` | Bordes de tarjetas | — |
-| `borderStrong` | `#D1D5DB` | Bordes de campos de texto | — |
+| `surfaceSunken` | `#F4F4F5` | Fondo de la app | — |
+| `surfaceMuted` | `#F1F1F2` | Buscador, pistas de controles | — |
+| `border` | `#E9E9EC` | Bordes de tarjetas | — |
+| `borderStrong` | `#D4D4D8` | Bordes de campos de texto | — |
 
 **`inkMuted` no es apto para texto** y la restricción se respeta en el código: se usa solo
 en iconos inactivos de la barra de pestañas, bordes y placeholders.

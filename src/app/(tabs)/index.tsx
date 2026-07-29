@@ -36,6 +36,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
+import { FLOATING_BAR_CLEARANCE } from '@/design-system/floating-tab-bar';
 import { Bounded, useIsWide } from '@/design-system/layout';
 import { Card, Chip, Divider, StatTile } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
@@ -46,6 +47,8 @@ import {
   ADDONS,
   CATEGORIES,
   DEFAULT_ADDRESS,
+  DEFAULT_CRUST_ID,
+  DEFAULT_SIZE_ID,
   ETA_MAX,
   ETA_MIN,
   FREE_DELIVERY_FROM,
@@ -65,8 +68,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
-  const { lastOrder, itemCount, deliveryMode, setDeliveryMode, repeatLastOrder, addAddon } =
-    useOrder();
+  const {
+    lastOrder,
+    itemCount,
+    deliveryMode,
+    setDeliveryMode,
+    repeatLastOrder,
+    addAddon,
+    addPizza,
+  } = useOrder();
   const { request } = useSectionNav();
 
   const [query, setQuery] = useState('');
@@ -115,6 +125,13 @@ export default function HomeScreen() {
     if (repeatLastOrder()) router.push('/carrito');
   };
 
+  /** Atajo del botón "Agregar": la pizza con los valores por defecto, sin pasar por el
+   *  Constructor. Los defaults son los más pedidos, así que para buena parte de los
+   *  usuarios es exactamente lo que iban a elegir. */
+  const quickAdd = (pizzaId: string) => {
+    addPizza({ pizzaId, sizeId: DEFAULT_SIZE_ID, crustId: DEFAULT_CRUST_ID, extras: [] }, 1);
+  };
+
   return (
     <Screen>
       <ScrollView
@@ -132,8 +149,11 @@ export default function HomeScreen() {
                     {BRAND.charAt(0)}
                   </Text>
                 </View>
+                {/* Palabra de acento en naranja, como el "Eat Fresh Pizza" de la
+                    referencia. Usa el tono `brand`, que resuelve al naranja profundo y
+                    cumple AA — el vivo acá sería un título ilegible. */}
                 <Text variant={isWide ? 'h1' : 'h2'} numberOfLines={1}>
-                  {BRAND}
+                  {BRAND} <Text variant={isWide ? 'h1' : 'h2'} tone="brand">Pizza</Text>
                 </Text>
               </View>
 
@@ -237,7 +257,8 @@ export default function HomeScreen() {
                     key={pizza.id}
                     pizza={pizza}
                     wide={isWide}
-                    onPress={() => router.push(`/constructor/${pizza.id}`)}
+                    onOpen={() => router.push(`/constructor/${pizza.id}`)}
+                    onQuickAdd={() => quickAdd(pizza.id)}
                   />
                 ))}
               </View>
@@ -280,7 +301,8 @@ export default function HomeScreen() {
                       key={pizza.id}
                       pizza={pizza}
                       wide={isWide}
-                      onPress={() => router.push(`/constructor/${pizza.id}`)}
+                      onOpen={() => router.push(`/constructor/${pizza.id}`)}
+                      onQuickAdd={() => quickAdd(pizza.id)}
                     />
                   ))}
                   {addons.map((addon) => (
@@ -555,26 +577,36 @@ function SectionTitle({
   );
 }
 
+/**
+ * Tarjeta de pizza, en el formato de la referencia: foto grande con las acciones
+ * superpuestas al pie de la imagen.
+ *
+ * Las dos acciones son distintas y las dos son reales:
+ * — **Agregar** manda la pizza al carrito con los valores por defecto (mediana, masa
+ *   clásica). Es el atajo para quien ya sabe lo que quiere.
+ * — **Armar** abre el Constructor. Es el camino de quien quiere personalizar.
+ *
+ * Tocar la foto equivale a "Armar": el área grande lleva al camino completo, y el atajo
+ * queda explícito en su propio botón.
+ */
 function PizzaCard({
   pizza,
-  onPress,
+  onOpen,
+  onQuickAdd,
   wide,
 }: {
   pizza: Pizza;
-  onPress: () => void;
+  onOpen: () => void;
+  onQuickAdd: () => void;
   wide: boolean;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
-      style={({ pressed }) => [
-        styles.productCard,
-        wide ? styles.productCardWide : styles.productCardNarrow,
-        pressed && styles.pressed,
-      ]}>
-      <View style={styles.photoWrap}>
+    <View style={[styles.productCard, wide ? styles.productCardWide : styles.productCardNarrow]}>
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
+        style={({ pressed }) => [styles.photoWrap, pressed && styles.pressed]}>
         <Image
           source={pizza.image}
           style={styles.photo}
@@ -582,26 +614,27 @@ function PizzaCard({
           transition={180}
           accessibilityLabel={pizza.name}
         />
-        {/* Precio sobre la foto, como en la referencia: se compara el catálogo sin tener
-            que bajar la vista al pie de cada tarjeta. */}
+
+        {/* Precio sobre la foto: se compara el catálogo sin bajar la vista al pie. */}
         <View style={styles.pricePill}>
           <Text variant="captionStrong">{formatPrice(priceFrom(pizza.id))}</Text>
         </View>
+      </Pressable>
+
+      <View style={styles.actionRow}>
+        <Button label="Agregar" variant="secondary" compact fullWidth={false} onPress={onQuickAdd} style={styles.actionButton} />
+        <Button label="Armar" compact fullWidth={false} onPress={onOpen} style={styles.actionButton} />
       </View>
 
       <View style={styles.productBody}>
         <Text variant="bodyStrong" numberOfLines={1}>
           {pizza.name}
         </Text>
-        <Text variant="micro" tone="secondary" numberOfLines={2} style={styles.productDesc}>
+        <Text variant="micro" tone="secondary" numberOfLines={2}>
           {pizza.description}
         </Text>
-
-        <View style={styles.addButton} pointerEvents="none">
-          <Icon name="add" size={20} color={color.onBrand} />
-        </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -640,24 +673,31 @@ function AddonCard({
         </View>
       </View>
 
+      {/* Una sola acción: estos productos no se configuran, así que "Armar" no aplica. */}
+      <View style={styles.actionRow}>
+        <View style={styles.addPill} pointerEvents="none">
+          <Icon name="add" size={17} color={color.onBrand} />
+          <Text variant="captionStrong" tone="onBrand">
+            Agregar
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.productBody}>
         <Text variant="bodyStrong" numberOfLines={1}>
           {addon.name}
         </Text>
-        <Text variant="micro" tone="secondary" numberOfLines={2} style={styles.productDesc}>
+        <Text variant="micro" tone="secondary" numberOfLines={2}>
           {addon.detail}
         </Text>
-
-        <View style={styles.addButton} pointerEvents="none">
-          <Icon name="add" size={20} color={color.onBrand} />
-        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: space.huge },
+  // Deja lugar a la píldora de navegación, que flota sobre el contenido.
+  content: { paddingBottom: FLOATING_BAR_CLEARANCE },
 
   /* Barra superior */
   appBar: {
@@ -804,15 +844,17 @@ const styles = StyleSheet.create({
   addressText: { flexShrink: 1 },
 
   /* Promoción */
+  // Amarillo cálido, como el banner promocional de la referencia. Se diferencia del
+  // naranja de las acciones para que no compita con los botones.
   promo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     padding: space.lg,
     borderRadius: radius.card,
-    backgroundColor: color.brandSoft,
+    backgroundColor: color.accentSoft,
     borderWidth: 1,
-    borderColor: color.brandBorder,
+    borderColor: color.accentBorder,
   },
   promoIcon: {
     width: 40,
@@ -872,35 +914,37 @@ const styles = StyleSheet.create({
   // Tres columnas en escritorio, una en móvil. El `gap` de 16 se descuenta del ancho.
   productCardWide: { width: '31.8%' },
   productCardNarrow: { width: '100%' },
-  photoWrap: { width: '100%', aspectRatio: 16 / 10, backgroundColor: color.surfaceMuted },
+  photoWrap: { width: '100%', aspectRatio: 16 / 11, backgroundColor: color.surfaceMuted },
   photo: { width: '100%', height: '100%' },
-  addonArt: { alignItems: 'center', justifyContent: 'center' },
   pricePill: {
     position: 'absolute',
     left: space.md,
-    bottom: space.md,
+    top: space.md,
     paddingHorizontal: space.md,
     paddingVertical: space.xs2,
     borderRadius: radius.full,
     backgroundColor: color.surface,
     ...elevation.card,
   },
-  productBody: { padding: space.lg, gap: 2 },
-  productDesc: { paddingRight: 44 },
-  // Superpuesto al pie de la tarjeta, como en la referencia. `pointerEvents: none`: el
-  // área táctil es la tarjeta entera, así que el botón es afordancia visual, no un blanco
-  // chico que hay que acertar.
-  addButton: {
-    position: 'absolute',
-    right: space.lg,
-    bottom: space.lg,
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: color.brand,
+  // Las acciones montan sobre el pie de la foto, como en la referencia.
+  actionRow: {
+    flexDirection: 'row',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    marginTop: -26,
+  },
+  actionButton: { flex: 1 },
+  addPill: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space.xs2,
+    height: touchTarget - 8,
+    borderRadius: radius.full,
+    backgroundColor: color.brand,
   },
+  productBody: { padding: space.lg, paddingTop: space.md, gap: 2 },
 
   noResults: { alignItems: 'center', gap: space.md, paddingVertical: space.xxl },
 

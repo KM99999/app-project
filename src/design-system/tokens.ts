@@ -1,14 +1,13 @@
 /**
  * Tokens del sistema de diseño — Forno
  *
- * El lenguaje visual está alineado con el design system del panel de administración
- * (nextjs-admin-dashboard / NextAdmin): índigo como color de acción, tinta azul-negra,
- * superficies blancas sobre gris frío, radios de 10px y sombras muy sutiles.
+ * Lenguaje visual tomado de la referencia de diseño de app de delivery: naranja vivo,
+ * superficies blancas sobre gris muy claro, radios grandes y generosos, fotografía como
+ * protagonista y navegación flotante en píldora.
  *
- * Una decisión a tener presente: el **chrome** de la aplicación es frío y neutro —lo que
- * le da el aire de producto moderno—, mientras que la **comida** conserva su paleta
- * cálida. Es la combinación que usan las plataformas de delivery serias: la interfaz no
- * compite con el producto, lo enmarca. Por eso `pizzaColor` no cambió.
+ * Es un lenguaje cálido y de consumo, a diferencia del anterior (frío, de panel de
+ * administración). Acá la interfaz **acompaña a la comida en temperatura** en lugar de
+ * contrastar con ella.
  *
  * Ningún componente declara un valor crudo. Si falta un valor, se agrega acá primero.
  *
@@ -18,79 +17,73 @@
 /**
  * Relación de contraste verificada contra blanco (#FFFFFF), según WCAG 2.1.
  *
- * Aviso importante sobre la paleta de origen: tres de sus colores de marca **no pasan AA
- * como texto** (`green #22ad5c` = 2.9:1, `red #f23030` = 4.0:1, `yellow #d97706` = 3.2:1).
- * Se usan solo como relleno, y para texto se usan las variantes oscuras. Por eso hay
- * tokens separados de `…Fill` y de texto: no es duplicación, es lo que evita que un
- * estado quede ilegible.
+ * ── El problema del naranja, y cómo se resuelve ──
+ *
+ * El naranja vivo de la referencia (#F26522) da **3.15:1 sobre blanco**. Eso alcanza para
+ * texto grande (≥18.66px en negrita) y para elementos no textuales, pero **no para texto
+ * normal**, que necesita 4.5:1. Es la trampa clásica de este tipo de paletas: se ven
+ * espectaculares en una maqueta y dejan ilegible la mitad de la app real.
+ *
+ * La solución tiene dos partes y ninguna sacrifica el aspecto:
+ *
+ * 1. `brand` se usa como **relleno** —botones, chips activos, acentos—. Sobre él, el texto
+ *    blanco va en 19px negrita, que sí califica como texto grande. La referencia ya usa
+ *    etiquetas grandes y gruesas en sus botones, así que no hay que deformar el diseño.
+ * 2. `brandText` es un naranja más profundo (5.18:1) para **texto naranja sobre blanco**:
+ *    precios, enlaces, la palabra de acento del título.
+ *
+ * No es duplicación: es lo que evita que un precio quede ilegible.
  */
 export const color = {
-  /** Índigo. Acciones primarias, precios, estado seleccionado. 5.49:1 ✅ AA */
-  brand: '#5750F1',
-  brandPressed: '#4338CA',
-  /** Fondo teñido para chips y filas seleccionadas. No lleva texto oscuro encima. */
-  brandSoft: '#EEF2FF',
-  brandBorder: '#C7D2FE',
+  /** Naranja vivo de la referencia. Relleno, nunca texto chico. 3.15:1 — AA large */
+  brand: '#F26522',
+  brandPressed: '#D9541A',
+  /** Naranja profundo, para texto sobre blanco. 5.18:1 ✅ AA */
+  brandText: '#C2410C',
+  /** Fondo teñido para chips y estados suaves. */
+  brandSoft: '#FFF1EA',
+  brandBorder: '#FBD5C2',
 
-  /** Verde. Texto y iconos de éxito. 4.86:1 ✅ AA */
+  /** Amarillo cálido del banner promocional de la referencia. Solo fondo. */
+  accentSoft: '#FDF3D7',
+  accentBorder: '#F6E4B0',
+
+  /** Verde. Texto e iconos de éxito. 4.86:1 ✅ AA */
   success: '#1A8245',
-  /** Verde pleno, solo para rellenos y puntos. 2.9:1 — nunca como texto. */
+  /** Verde pleno, solo relleno. 2.9:1 — nunca texto. */
   successFill: '#22AD5C',
   successSoft: '#E9FBF0',
 
-  /** Ámbar. Texto del paso en curso. 5.24:1 ✅ AA */
+  /** Ámbar. Texto del paso en curso del seguimiento. 5.24:1 ✅ AA */
   warning: '#B45309',
-  /** Ámbar pleno, solo relleno. 3.2:1 — nunca como texto. */
   warningFill: '#F59E0B',
   warningSoft: '#FFFBEB',
 
-  /** Rojo. Texto de error y validación. 4.92:1 ✅ AA */
+  /** Rojo. Texto de error. 4.92:1 ✅ AA */
   danger: '#E10E0E',
   dangerSoft: '#FEF3F3',
 
-  /** Tinta principal, azul-negra. 17.6:1 ✅ AAA */
-  ink: '#111928',
-  /** Texto secundario, descripciones. 4.83:1 ✅ AA */
+  /** Tinta principal, casi negra y ligeramente cálida. 17.4:1 ✅ AAA */
+  ink: '#161312',
+  /** Texto secundario. 4.83:1 ✅ AA */
   inkSecondary: '#6B7280',
   /** ⚠️ 2.54:1 — NO apto como texto. Solo iconos inactivos, bordes y placeholders. */
   inkMuted: '#9CA3AF',
   inkDisabled: '#D1D5DB',
 
   surface: '#FFFFFF',
-  /** Fondo de la app: gris frío. Es lo que hace que las tarjetas blancas se despeguen. */
-  surfaceSunken: '#F9FAFB',
-  /** Superficie intermedia para rellenos y pistas de controles. */
-  surfaceMuted: '#F3F4F6',
-  border: '#E6EBF1',
-  /** Borde más marcado para inputs y controles enfocables. */
-  borderStrong: '#D1D5DB',
-  overlay: 'rgba(17, 25, 40, 0.45)',
+  /** Fondo de la app: gris muy claro y neutro, como el de la referencia. */
+  surfaceSunken: '#F4F4F5',
+  /** Relleno de buscador, pistas de control y cuadros de imagen. */
+  surfaceMuted: '#F1F1F2',
+  border: '#E9E9EC',
+  borderStrong: '#D4D4D8',
+  overlay: 'rgba(22, 19, 18, 0.45)',
 
   onBrand: '#FFFFFF',
 } as const;
 
-/**
- * Paleta de la ilustración de pizza. Deliberadamente cálida y sin tocar: es contenido,
- * no interfaz. Ver la nota del encabezado.
- */
-export const pizzaColor = {
-  crust: '#E8B06A',
-  crustEdge: '#D19A50',
-  sauce: '#C43C22',
-  cheese: '#F2C14E',
-  basil: '#3E8E4F',
-  pepperoni: '#B03A2E',
-  olive: '#3D3A44',
-  onion: '#E9DDE8',
-  ham: '#E79A94',
-  egg: '#FAF3D8',
-  pepper: '#D95F2B',
-} as const;
-
-/**
- * Grilla de 8. El 4 y el 6 existen como medios pasos para ajustes ópticos
- * (separación icono-texto, padding interno de chips).
- */
+/** Grilla de 8, con 4 y 6 como medios pasos para ajustes ópticos. */
 export const space = {
   xs: 4,
   xs2: 6,
@@ -104,70 +97,71 @@ export const space = {
 } as const;
 
 /**
- * Radios. El `card: 10` es la firma del sistema de origen: más chico que el redondeo
- * blando de las apps de consumo, y es buena parte de por qué se lee como producto serio.
+ * Radios **grandes**. Es la mitad del carácter de este lenguaje: donde el panel de
+ * administración usaba 10, acá las tarjetas van en 24 y todo lo accionable es píldora
+ * completa. Redondear poco haría que la misma paleta se viera severa.
  */
 export const radius = {
-  xs: 5,
-  sm: 7,
-  md: 9,
-  card: 10,
-  lg: 12,
-  xl: 16,
+  /** Marcas pequeñas: indicadores, casillas, etiquetas. */
+  xs: 8,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  card: 24,
+  xl: 28,
+  /** Hojas y contenedores que suben desde abajo. */
+  sheet: 32,
   full: 999,
 } as const;
 
 /**
- * Escala tipográfica, tomada de la del panel (`heading-*` / `body-*`).
+ * Escala tipográfica. Títulos grandes y gruesos con interletrado negativo, que es lo que
+ * da el aire de la referencia.
  *
- * Sigue usando la fuente del sistema y no Satoshi: cargar una fuente propia agrega peso
- * al bundle y un parpadeo de carga, y el original la sirve como archivo local que este
- * proyecto no tiene. La jerarquía —que es lo que hace el aire de producto— viene del
- * tamaño y del peso, no del nombre de la familia.
+ * `button` existe como variante propia —19px/700— y no es un capricho: es el tamaño que
+ * hace que el texto blanco sobre naranja califique como texto grande y cumpla AA. Ver la
+ * nota del bloque `color`.
  */
 export const type = {
-  display: { fontSize: 32, lineHeight: 40, fontWeight: '700', letterSpacing: -0.6 },
-  h1: { fontSize: 28, lineHeight: 36, fontWeight: '700', letterSpacing: -0.4 },
-  h2: { fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.3 },
-  h3: { fontSize: 18, lineHeight: 24, fontWeight: '600', letterSpacing: -0.2 },
+  display: { fontSize: 30, lineHeight: 38, fontWeight: '800', letterSpacing: -0.7 },
+  h1: { fontSize: 26, lineHeight: 33, fontWeight: '800', letterSpacing: -0.5 },
+  h2: { fontSize: 21, lineHeight: 27, fontWeight: '700', letterSpacing: -0.4 },
+  h3: { fontSize: 17, lineHeight: 23, fontWeight: '700', letterSpacing: -0.2 },
+  button: { fontSize: 19, lineHeight: 25, fontWeight: '700', letterSpacing: -0.2 },
   body: { fontSize: 15, lineHeight: 23, fontWeight: '400' },
   bodyStrong: { fontSize: 15, lineHeight: 23, fontWeight: '600' },
-  caption: { fontSize: 14, lineHeight: 22, fontWeight: '400' },
-  captionStrong: { fontSize: 14, lineHeight: 22, fontWeight: '600' },
+  caption: { fontSize: 14, lineHeight: 21, fontWeight: '400' },
+  captionStrong: { fontSize: 14, lineHeight: 21, fontWeight: '600' },
   micro: { fontSize: 12, lineHeight: 20, fontWeight: '500' },
-  /** Números grandes de las tarjetas de resumen. Tabular para que no bailen al cambiar. */
-  metric: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -0.4 },
+  metric: { fontSize: 24, lineHeight: 30, fontWeight: '800', letterSpacing: -0.4 },
 } as const;
 
 /**
- * Elevación. Sombras muy tenues y de radio corto — la diferencia entre una interfaz que
- * se ve moderna y una que se ve inflada suele estar acá. Nada de sombras difusas y
- * oscuras.
+ * Elevación suave y difusa, lo contrario de las sombras cortas del panel. Acá las tarjetas
+ * flotan; es parte del carácter cálido del lenguaje.
  */
 export const elevation = {
-  /** `shadow-1` del sistema de origen. La sombra por defecto de toda tarjeta. */
   card: {
-    shadowColor: '#545776',
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    shadowColor: '#161312',
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
-  /** Un escalón más, para elementos que deben destacarse del resto de la lista. */
   raised: {
-    shadowColor: '#545776',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowColor: '#161312',
+    shadowOpacity: 0.1,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  /** Barra fija inferior: la sombra va hacia arriba. */
+  /** Navegación flotante y barra fija: sombra amplia hacia arriba. */
   bar: {
-    shadowColor: '#111928',
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 12,
+    shadowColor: '#161312',
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 16,
   },
 } as const;
 

@@ -70,10 +70,24 @@ export function ScreenHeader({
  * Es el componente que materializa "el monto no sorprende al final": el número está a la
  * vista durante toda la personalización, no aparece recién en el resumen.
  */
-export function StickyBar({ children }: { children: React.ReactNode }) {
+/**
+ * `underFloatingNav` reserva abajo el alto de la píldora de navegación flotante.
+ *
+ * Hace falta en las pantallas que son pestaña y además tienen su propia acción fija
+ * (el carrito): la píldora está posicionada en absoluto sobre el contenido y, sin este
+ * espacio, se apoyaría justo encima del botón principal.
+ */
+export function StickyBar({
+  children,
+  underFloatingNav = false,
+}: {
+  children: React.ReactNode;
+  underFloatingNav?: boolean;
+}) {
   const insets = useSafeAreaInsets();
+  const bottom = Math.max(insets.bottom, space.lg) + (underFloatingNav ? 84 : 0);
   return (
-    <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
+    <View style={[styles.stickyBar, { paddingBottom: bottom }]}>
       {/* El contenido se limita igual que el de la pantalla: sin esto, en escritorio el
           botón de confirmar cruzaría 1600px y el total quedaría a un extremo. */}
       <Bounded maxWidth={CONTENT_MAX_WIDTH_NARROW} style={styles.stickyInner}>

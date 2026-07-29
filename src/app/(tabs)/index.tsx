@@ -225,6 +225,10 @@ export default function HomeScreen() {
             paddingTop: (isWide ? space.xxl : insets.top) + space.lg,
             // Espejo del riel, para que el bloque quede centrado contra la ventana.
             paddingRight: space.lg + centeringPad,
+            // En escritorio no hay píldora flotante que esquivar, así que no hace falta
+            // reservarle lugar. Dejar esa reserva desbalanceaba el centrado vertical:
+            // sobraba más abajo que arriba.
+            paddingBottom: isWide ? space.xxl + space.lg : FLOATING_BAR_CLEARANCE,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -550,6 +554,15 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: space.lg,
     paddingBottom: FLOATING_BAR_CLEARANCE,
+    // Centrado vertical: cuando el contenido es más bajo que la pantalla, el espacio que
+    // sobra se reparte arriba y abajo en lugar de quedar todo abajo.
+    //
+    // `flexGrow: 1` le da al contenedor al menos el alto de la ventana. Si el contenido
+    // es más alto, el contenedor crece con él y no queda espacio libre que repartir, así
+    // que `center` no desplaza nada y el scroll sigue empezando arriba. Por eso es seguro
+    // dejarlo siempre puesto y no condicionarlo al tamaño.
+    flexGrow: 1,
+    justifyContent: 'center',
   },
 
   brandRow: {

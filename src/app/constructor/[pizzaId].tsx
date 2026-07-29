@@ -23,9 +23,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Image } from 'expo-image';
+
 import { Button } from '@/design-system/button';
 import { narrowContent } from '@/design-system/layout';
-import { PizzaArt } from '@/design-system/pizza-art';
 import { ChoiceCard, OptionRow, SectionHeader } from '@/design-system/primitives';
 import { Screen, ScreenHeader, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -129,21 +130,21 @@ export default function BuilderScreen() {
         contentContainerStyle={[styles.content, narrowContent]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        {/* Vista previa: refleja tamaño, masa e ingredientes en el momento en que se eligen. */}
         <View style={styles.hero}>
-          <View style={styles.heroBackdrop}>
-            <PizzaArt
-              diameter={210}
-              baseToppingIds={pizza.baseToppingIds}
-              extras={extras}
-              crustId={crustId}
-              sizeScale={size?.scale ?? 1}
-            />
-          </View>
+          <Image
+            source={pizza.image}
+            style={styles.heroImage}
+            contentFit="cover"
+            transition={200}
+            accessibilityLabel={pizza.name}
+          />
 
-          <Text variant="body" tone="secondary" center style={styles.intro}>
-            {pizza.description}
-          </Text>
+          <View style={styles.heroBody}>
+            <Text variant="h2">{pizza.name}</Text>
+            <Text variant="caption" tone="secondary">
+              {pizza.description}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -303,26 +304,15 @@ const styles = StyleSheet.create({
   content: { paddingBottom: STICKY_BAR_CLEARANCE, gap: space.xxl },
 
   hero: {
-    alignItems: 'center',
-    paddingTop: space.xl,
-    paddingBottom: space.xl,
-    paddingHorizontal: space.xxl,
-    gap: space.lg,
     backgroundColor: color.surface,
     borderBottomWidth: 1,
     borderBottomColor: color.border,
   },
-  // Disco gris detrás de la pizza: la despega del blanco y le da un centro visual claro,
-  // que es lo que hace que la vista previa se lea como producto y no como un dibujo suelto.
-  heroBackdrop: {
-    width: 244,
-    height: 244,
-    borderRadius: radius.full,
-    backgroundColor: color.surfaceSunken,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  intro: { maxWidth: 320 },
+  // Foto a sangre y ancha: es lo que vende el producto antes de que empiece la
+  // configuración. El nombre se repite bajo la imagen porque el encabezado se pierde de
+  // vista apenas el usuario hace scroll.
+  heroImage: { width: '100%', aspectRatio: 16 / 9, backgroundColor: color.surfaceMuted },
+  heroBody: { padding: space.xl, gap: space.xs },
 
   section: { paddingHorizontal: space.xl },
   sizeRow: { flexDirection: 'row', gap: space.sm },

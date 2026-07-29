@@ -61,10 +61,21 @@ export type Pizza = {
   description: string;
   /** Precio de la pizza mediana con masa clásica y sin extras. */
   basePrice: number;
-  /** Ingredientes que ya vienen en la pizza. Solo para la ilustración y la descripción. */
+  /** Ingredientes que ya vienen en la pizza. Alimenta la descripción del carrito. */
   baseToppingIds: string[];
   popular: boolean;
+  /**
+   * Fotografía del producto, empaquetada con la app (`require`).
+   *
+   * Es un `require` y no una URL: el prototipo tiene que abrirse sin red y sin estados de
+   * carga. `ImageSourcePropType` no se importa acá para no atar el modelo de dominio a
+   * React Native — el tipo real lo resuelve el consumidor.
+   */
+  image: number;
 };
+
+/** Categorías del menú. Alimentan la fila de chips de la pantalla de Inicio. */
+export type MenuCategory = 'pizzas' | 'bebidas' | 'acompanamientos' | 'postres';
 
 /** Bebidas y acompañamientos. No se personalizan. */
 export type Addon = {
@@ -72,7 +83,9 @@ export type Addon = {
   name: string;
   detail: string;
   price: number;
+  /** Tinte de la tarjeta. Estos productos no tienen fotografía disponible todavía. */
   color: string;
+  category: Exclude<MenuCategory, 'pizzas'>;
 };
 
 /** Un ingrediente extra elegido por el usuario, con el lado al que aplica. */

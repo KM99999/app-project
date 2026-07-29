@@ -15,17 +15,15 @@
  *   una recarga para volver a ver el catálogo completo.
  */
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePathname, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { useSectionNav, type SectionId } from '@/store/section-nav';
 import { useOrder } from '@/store/order-store';
+import { useSectionNav, type SectionId } from '@/store/section-nav';
+import { Icon, type IconName } from './icon';
 import { SIDEBAR_WIDTH } from './layout';
 import { Text } from './text';
 import { color, radius, space, touchTarget } from './tokens';
-
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export function Sidebar() {
   const router = useRouter();
@@ -142,7 +140,7 @@ function SidebarItem({
         selected && styles.itemSelected,
         pressed && !selected && styles.itemPressed,
       ]}>
-      <Ionicons
+      <Icon
         name={icon}
         size={20}
         color={selected ? color.brand : color.inkSecondary}

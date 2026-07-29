@@ -14,9 +14,11 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Icon } from '@/design-system/icon';
+import { Image } from 'expo-image';
+
 import { Button } from '@/design-system/button';
 import { Bounded, CONTENT_MAX_WIDTH_NARROW, narrowContent } from '@/design-system/layout';
-import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Chip, Divider, PriceRow, Stepper } from '@/design-system/primitives';
 import { Screen, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -127,14 +129,13 @@ function CartLineCard({
     <Card style={styles.lineCard}>
       <View style={styles.lineTop}>
         {isPizza && pizza ? (
-          <PizzaArt
-            diameter={64}
-            baseToppingIds={pizza.baseToppingIds}
-            extras={line.config.extras}
-            crustId={line.config.crustId}
-          />
+          <Image source={pizza.image} style={styles.thumb} contentFit="cover" transition={140} />
         ) : (
-          <View style={[styles.addonThumb, { backgroundColor: addon?.color ?? color.border }]} />
+          <View style={[styles.thumb, styles.addonThumb, { backgroundColor: addon?.color ?? color.border }]}>
+            <Text variant="h3" tone="onBrand">
+              {addon?.name.charAt(0) ?? '?'}
+            </Text>
+          </View>
         )}
 
         <View style={styles.lineText}>
@@ -174,7 +175,9 @@ function EmptyCart({ onBrowse }: { onBrowse: () => void }) {
   return (
     <Screen>
       <View style={styles.empty}>
-        <PizzaArt diameter={140} baseToppingIds={[]} />
+        <View style={styles.emptyIcon}>
+          <Icon name="cart-outline" size={40} color={color.brand} />
+        </View>
         <View style={styles.emptyText}>
           <Text variant="h1" center>
             Tu carrito está vacío
@@ -206,7 +209,8 @@ const styles = StyleSheet.create({
   lineTop: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   lineText: { flex: 1, gap: 2 },
   editLink: { marginTop: space.xs },
-  addonThumb: { width: 64, height: 64, borderRadius: radius.md },
+  thumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: color.surfaceMuted },
+  addonThumb: { alignItems: 'center', justifyContent: 'center' },
   lineBottom: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,4 +236,12 @@ const styles = StyleSheet.create({
   },
   emptyText: { gap: space.sm },
   emptyChip: { alignSelf: 'center' },
+  emptyIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.full,
+    backgroundColor: color.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

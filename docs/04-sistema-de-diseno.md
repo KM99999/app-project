@@ -160,23 +160,35 @@ En [`src/design-system/`](../src/design-system/). Cada uno trae sus estados resu
 | `Stepper` | `primitives.tsx` | Cantidad; en 1, "–" elimina |
 | `Badge`, `Chip`, `PriceRow` | `primitives.tsx` | Señales y desglose |
 | `Screen`, `ScreenHeader`, `StickyBar` | `screen.tsx` | Estructura y área segura |
-| `PizzaArt` | `pizza-art.tsx` | Ilustración procedural — ver abajo |
+| **`Icon`** | `icon.tsx` | Envoltorio de Ionicons seguro para el export estático — ver abajo |
 
-### `PizzaArt`
+### Fotografía de producto
 
-Dibuja la pizza con Views nativas a partir de la configuración actual: cada ingrediente
-que se agrega aparece sobre la masa en el momento.
+El catálogo usa **fotografía real**, empaquetada con la app (`require`) y no traída por
+red: el prototipo abre sin conexión y sin estados de carga.
 
-Generada y no fotográfica porque refleja la configuración real —cosa que una foto de
-catálogo no puede hacer—, no tiene estados de carga ni saltos de layout, y deja el
-prototipo autocontenido: funciona sin red, en iOS, Android y web.
+Las seis pizzas tienen foto propia, elegida para que se corresponda con la descripción
+—la Napolitana lleva tomate y albahaca, la Calabresa pepperoni, la Fugazzeta es blanca sin
+salsa—. Emparejarlas al azar habría sido más rápido y se habría notado enseguida.
 
-Las posiciones son deterministas (ángulo áureo indexado, sin `Math.random()`): con
-aleatoriedad, cada re-render reacomodaría los ingredientes y la pizza titilaría con cada
-toque.
+Las imágenes se redujeron a 900px de ancho y calidad 82: **708 KB las seis**, contra los
+2,4 MB de los originales. En una pantalla de catálogo eso es la diferencia entre entrar de
+una y ver los huecos cargarse.
 
-**Para producción:** fotografía real en el catálogo, ilustración dentro del Constructor,
-que es donde aporta.
+**Bebidas, acompañamientos y postres no tienen foto** porque el material provisto solo
+traía pizzas. En lugar de rellenar con una imagen genérica que no es el producto, esas
+tarjetas usan un panel tintado con la inicial: se lee como decisión y no como imagen
+faltante, y se reemplaza el día que haya fotos reales.
+
+*(Antes existía `PizzaArt`, una ilustración procedural que dibujaba los ingredientes con
+Views nativas. Se retiró al incorporar fotografía: mantener las dos habría sido dos
+lenguajes visuales compitiendo en la misma pantalla.)*
+
+### `Icon`
+
+Envoltorio de Ionicons que **no dibuja nada en el primer render** y reserva un hueco del
+mismo tamaño hasta el montaje. Ver §8: la fuente de iconos no existe en el build, y
+dibujarla durante la hidratación rompe la página.
 
 ---
 
@@ -261,6 +273,19 @@ cambiaría el árbol entero.
 
 **Regla general para este proyecto:** nada que dependa de la hora, del ancho de ventana o
 de cualquier dato que no exista en el build puede decidirse durante el primer render.
+
+Ya mordió tres veces, y conviene tenerlas presentes porque **el build termina en verde en
+las tres**: el problema solo aparece cuando el navegador hidrata.
+
+| # | Qué lo causó | Cómo se resolvió |
+|---|---|---|
+| 1 | Saludo según la hora (`new Date()` en el render) | Se calcula en un efecto, tras el montaje |
+| 2 | Layout según el ancho de ventana | `useIsWide()` devuelve `false` en el primer render |
+| 3 | Iconos de `@expo/vector-icons` (la fuente no está en el build) | `Icon` dibuja un hueco del mismo tamaño hasta montarse |
+
+El caso 3 se localizó **midiendo, no adivinando**: de las cuatro rutas, las dos que
+fallaban eran exactamente las dos que dibujaban iconos en el contenido de la página. La
+herramienta común es `useMounted()`, en [`layout.tsx`](../src/design-system/layout.tsx).
 
 ---
 

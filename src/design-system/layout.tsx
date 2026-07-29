@@ -51,9 +51,21 @@ export const narrowContent = {
  */
 export function useIsWide(): boolean {
   const { width } = useWindowDimensions();
+  const mounted = useMounted();
+  return mounted && width >= BREAKPOINT_WIDE;
+}
+
+/**
+ * `false` durante el render inicial, `true` una vez montado en el navegador.
+ *
+ * Es la herramienta para todo lo que **no existe en el build**: la hora, el ancho de la
+ * ventana, las fuentes de iconos. Ese contenido no puede decidirse durante el primer
+ * render sin romper la hidratación.
+ */
+export function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  return mounted && width >= BREAKPOINT_WIDE;
+  return mounted;
 }
 
 /**

@@ -101,7 +101,8 @@ src/
     seguimiento/[orderId]     Seguimiento del pedido
   design-system/            Tokens y componentes compartidos
     tokens.ts                 Fuente de verdad de color, tipografía y espaciado
-    pizza-art.tsx             Ilustración procedural de pizza
+    sidebar.tsx               Navegación de escritorio
+    icon.tsx                  Iconos seguros para el export estático
   domain/                   Modelo, catálogo y motor de precios
   store/                    Carrito, preferencias e historial
 docs/                       Documentación de diseño

@@ -19,9 +19,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { Image } from 'expo-image';
+
 import { Button } from '@/design-system/button';
 import { narrowContent } from '@/design-system/layout';
-import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Divider, PriceRow } from '@/design-system/primitives';
 import { Screen, ScreenHeader, StickyBar, STICKY_BAR_CLEARANCE } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -72,11 +73,12 @@ export default function TrackingScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           {heroPizza ? (
-            <PizzaArt
-              diameter={150}
-              baseToppingIds={heroPizza.baseToppingIds}
-              extras={firstPizzaLine?.kind === 'pizza' ? firstPizzaLine.config.extras : []}
-              crustId={firstPizzaLine?.kind === 'pizza' ? firstPizzaLine.config.crustId : 'clasica'}
+            <Image
+              source={heroPizza.image}
+              style={styles.heroImage}
+              contentFit="cover"
+              transition={200}
+              accessibilityLabel={heroPizza.name}
             />
           ) : null}
 
@@ -206,6 +208,12 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: STICKY_BAR_CLEARANCE, gap: space.lg },
 
   hero: { alignItems: 'center', gap: space.xs, paddingVertical: space.lg },
+  heroImage: {
+    width: 148,
+    height: 148,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
+  },
   etaTitle: { marginTop: space.md },
 
   timeline: { gap: 0 },

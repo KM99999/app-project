@@ -1,84 +1,85 @@
 /**
  * Inicio — Forno
  *
- * La pantalla sirve a dos modos de uso sin obligar a ninguno a pasar por el camino del
- * otro (ver docs/01-investigacion.md §4):
+ * Estructura tomada del formato de referencia de plataformas de pedido:
  *
- * — Modo recompra: el bloque "Tu último pedido" está sobre el pliegue. Dos toques hasta
- *   la confirmación. Es el camino que recorre la mayor parte del volumen.
- * — Modo exploración: las más pedidas y el menú completo empiezan inmediatamente debajo,
- *   en el mismo scroll. No en otra pestaña.
+ *   barra superior (marca · buscador · carrito)
+ *   chips de categoría
+ *   modo de entrega (delivery / retiro)
+ *   tarjetas de momento de entrega
+ *   banner de promoción
+ *   "Más pedidas" en grilla de fotos
+ *   menú completo, filtrable
  *
- * En escritorio el contenido tiene techo de ancho y el menú pasa a dos columnas. Sin eso,
- * una fila de menú cruza toda la pantalla y deja de poder leerse de un vistazo: la
- * ilustración queda a un extremo y el precio al otro.
+ * Las dos ideas de producto siguen mandando (ver docs/01-investigacion.md §4): la recompra
+ * está sobre el pliegue para el cliente que ya sabe qué quiere, y el catálogo arranca
+ * inmediatamente debajo, en el mismo scroll, para el que viene a explorar.
  *
- * Las secciones se registran para que la barra lateral pueda desplazarse hasta ellas.
+ * Todo control de esta pantalla hace algo real. El buscador filtra, los chips filtran, y
+ * el selector de entrega es el mismo `deliveryMode` que después usa el checkout para
+ * calcular el envío. Lo único que no está construido —programar el pedido— se muestra
+ * marcado como etapa 2 en lugar de fingir que funciona.
  */
 
+import { Icon, type IconName } from '@/design-system/icon';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
 import { Bounded, useIsWide } from '@/design-system/layout';
-import { PizzaArt } from '@/design-system/pizza-art';
 import { Card, Chip, Divider, StatTile } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
-import { color, elevation, radius, space } from '@/design-system/tokens';
+import { color, elevation, radius, space, touchTarget } from '@/design-system/tokens';
 import { formatPrice, formatRelativeDay, pluralizeItems } from '@/domain/format';
-import { ETA_MAX, ETA_MIN, PIZZAS } from '@/domain/menu';
+import {
+  ADDONS,
+  CATEGORIES,
+  DEFAULT_ADDRESS,
+  ETA_MAX,
+  ETA_MIN,
+  FREE_DELIVERY_FROM,
+  PIZZAS,
+} from '@/domain/menu';
 import { describeLine, priceFrom } from '@/domain/pricing';
-import type { Order, Pizza } from '@/domain/types';
+import type { Addon, MenuCategory, Order, Pizza } from '@/domain/types';
 import { useOrder } from '@/store/order-store';
 import { useSectionNav, type SectionId } from '@/store/section-nav';
 
-/** En producción viene del perfil. Acá alcanza para que el saludo no sea genérico. */
 const USER_NAME = 'Carlos';
+const BRAND = 'Forno';
 
-/** Saludo según la hora. Un "Buenas noches" fijo a las 9 de la mañana se nota. */
-function greeting(hour: number): string {
-  if (hour < 6) return 'Buenas madrugadas';
-  if (hour < 13) return 'Buen día';
-  if (hour < 20) return 'Buenas tardes';
-  return 'Buenas noches';
-}
-
-/**
- * El saludo se resuelve **después del montaje**, nunca durante el render inicial.
- *
- * El export es estático: el HTML se genera en el build, con la hora de la máquina que
- * compiló. Si el saludo se calculara en el render, el servidor escribiría "Buenas tardes"
- * y el cliente "Buenas noches", y React aborta la hidratación por diferencia de texto
- * (error #418). Se reserva el espacio con un carácter invisible para que la línea no
- * salte cuando aparece el texto real.
- */
-function useGreeting(): string {
-  const [value, setValue] = useState(' ');
-  useEffect(() => setValue(greeting(new Date().getHours())), []);
-  return value;
-}
+type CategoryFilter = MenuCategory | 'todas';
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
-  const { lastOrder, address, repeatLastOrder } = useOrder();
+  const { lastOrder, itemCount, deliveryMode, setDeliveryMode, repeatLastOrder, addAddon } =
+    useOrder();
   const { request } = useSectionNav();
-  const salutation = useGreeting();
+
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<CategoryFilter>('todas');
 
   const scrollRef = useRef<ScrollView>(null);
-  // Posición vertical de cada sección dentro del contenido del scroll. Se llena con
-  // onLayout, así que no hace falta medir nada a mano ni hardcodear alturas.
+  // Posición vertical de cada sección. Se llena con onLayout, así que no hay alturas
+  // hardcodeadas que se desincronicen al cambiar el contenido.
   const offsets = useRef<Record<SectionId, number>>({ populares: 0, menu: 0 });
 
   useEffect(() => {
     if (!request) return;
     scrollRef.current?.scrollTo({
-      // Un respiro por encima del encabezado de la sección, para que no quede pegado
-      // al borde superior.
       y: Math.max(offsets.current[request.section] - space.lg, 0),
       animated: true,
     });
@@ -90,9 +91,27 @@ export default function HomeScreen() {
 
   const popular = PIZZAS.filter((pizza) => pizza.popular);
 
+  const { pizzas, addons } = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const matches = (name: string, description: string) =>
+      needle.length === 0 ||
+      name.toLowerCase().includes(needle) ||
+      description.toLowerCase().includes(needle);
+
+    return {
+      pizzas:
+        category === 'todas' || category === 'pizzas'
+          ? PIZZAS.filter((p) => matches(p.name, p.description))
+          : [],
+      addons: ADDONS.filter(
+        (a) => (category === 'todas' || a.category === category) && matches(a.name, a.detail)
+      ),
+    };
+  }, [query, category]);
+
+  const nothingFound = pizzas.length === 0 && addons.length === 0;
+
   const handleRepeat = () => {
-    // Va al carrito y no directo al checkout: un toque más, a cambio de que el usuario
-    // vea qué está comprando y pueda ajustarlo antes de confirmar.
     if (repeatLastOrder()) router.push('/carrito');
   };
 
@@ -101,66 +120,120 @@ export default function HomeScreen() {
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { paddingTop: (isWide ? space.xxxl : insets.top) + space.xl }]}>
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        {/* ── Barra superior ─────────────────────────────────────────────── */}
+        <View style={[styles.appBar, { paddingTop: (isWide ? space.xl : insets.top) + space.md }]}>
           <Bounded>
-            <Text variant="micro" tone="secondary">
-              {salutation}
-            </Text>
-            <Text variant="display">Hola, {USER_NAME}</Text>
+            <View style={styles.appBarTop}>
+              <View style={styles.brandRow}>
+                <View style={styles.logo}>
+                  <Text variant="bodyStrong" tone="onBrand">
+                    {BRAND.charAt(0)}
+                  </Text>
+                </View>
+                <Text variant={isWide ? 'h1' : 'h2'} numberOfLines={1}>
+                  {BRAND}
+                </Text>
+              </View>
 
-            {/* La dirección como objeto con superficie propia, no como texto suelto: es el
-                dato que el usuario verifica primero y el que más cambia. */}
-            <View style={styles.addressPill}>
-              <View style={styles.pin} />
-              <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
-                {address}
-              </Text>
+              <View style={styles.appBarActions}>
+                {isWide ? <SearchField value={query} onChange={setQuery} /> : null}
+                <Pressable
+                  onPress={() => router.push('/carrito')}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    itemCount > 0 ? `Carrito, ${itemCount} productos` : 'Carrito, vacío'
+                  }
+                  style={({ pressed }) => [styles.cartButton, pressed && styles.pressed]}>
+                  <Icon name="cart-outline" size={18} color={color.onBrand} />
+                  <Text variant="captionStrong" tone="onBrand">
+                    Carrito
+                  </Text>
+                  {itemCount > 0 ? (
+                    <View style={styles.cartCount}>
+                      <Text variant="micro" tone="brand" style={styles.cartCountText}>
+                        {itemCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              </View>
             </View>
+
+            {!isWide ? (
+              <View style={styles.mobileSearch}>
+                <SearchField value={query} onChange={setQuery} />
+              </View>
+            ) : null}
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}>
+              {CATEGORIES.map((item) => (
+                <CategoryChip
+                  key={item.id}
+                  label={item.label}
+                  selected={category === item.id}
+                  onPress={() => setCategory(item.id)}
+                />
+              ))}
+            </ScrollView>
           </Bounded>
         </View>
 
         <View style={styles.body}>
           <Bounded style={styles.stack}>
-            {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
-
-            <View onLayout={captureOffset('populares')} style={styles.section}>
-              <SectionHead title="Las más pedidas" hint="Lo que más sale del horno" />
-
-              {isWide ? (
-                // En escritorio hay ancho de sobra: se despliegan todas y se evita un
-                // scroll horizontal que en desktop nadie descubre.
-                <View style={styles.popularGrid}>
-                  {popular.map((pizza) => (
-                    <PopularCard
-                      key={pizza.id}
-                      pizza={pizza}
-                      wide
-                      onPress={() => router.push(`/constructor/${pizza.id}`)}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.popularRow}>
-                  {popular.map((pizza) => (
-                    <PopularCard
-                      key={pizza.id}
-                      pizza={pizza}
-                      onPress={() => router.push(`/constructor/${pizza.id}`)}
-                    />
-                  ))}
-                </ScrollView>
-              )}
+            {/* ── Modo de entrega ─────────────────────────────────────────── */}
+            <View style={styles.modeSwitch}>
+              <ModeTab
+                icon="storefront-outline"
+                label="Retiro"
+                selected={deliveryMode === 'retiro'}
+                onPress={() => setDeliveryMode('retiro')}
+              />
+              <ModeTab
+                icon="bicycle-outline"
+                label="Delivery"
+                selected={deliveryMode === 'delivery'}
+                onPress={() => setDeliveryMode('delivery')}
+              />
             </View>
 
-            <View onLayout={captureOffset('menu')} style={styles.section}>
-              <SectionHead title="Todo el menú" hint={`${PIZZAS.length} pizzas disponibles`} />
-              <View style={[styles.menuList, isWide && styles.menuGrid]}>
-                {PIZZAS.map((pizza) => (
-                  <MenuRow
+            <View style={[styles.fulfilmentRow, !isWide && styles.fulfilmentColumn]}>
+              <FulfilmentCard
+                icon="flash-outline"
+                title="Lo antes posible"
+                subtitle={`En ${ETA_MIN}-${ETA_MAX} min`}
+                address={deliveryMode === 'delivery' ? DEFAULT_ADDRESS : 'Av. Corrientes 3400'}
+                status="Disponible"
+                selected
+              />
+              <FulfilmentCard
+                icon="calendar-outline"
+                title="Programar"
+                subtitle="Elegí día y horario"
+                address={deliveryMode === 'delivery' ? DEFAULT_ADDRESS : 'Av. Corrientes 3400'}
+                comingSoon
+              />
+            </View>
+
+            <PromoBanner mode={deliveryMode} />
+
+            {/* ── Recompra ────────────────────────────────────────────────── */}
+            {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
+
+            {/* ── Más pedidas ─────────────────────────────────────────────── */}
+            <View onLayout={captureOffset('populares')} style={styles.section}>
+              <SectionTitle
+                icon="flame"
+                title="Las más pedidas"
+                subtitle="Lo que más sale del horno"
+              />
+              <View style={styles.grid}>
+                {popular.map((pizza) => (
+                  <PizzaCard
                     key={pizza.id}
                     pizza={pizza}
                     wide={isWide}
@@ -169,6 +242,58 @@ export default function HomeScreen() {
                 ))}
               </View>
             </View>
+
+            {/* ── Menú completo ───────────────────────────────────────────── */}
+            <View onLayout={captureOffset('menu')} style={styles.section}>
+              <SectionTitle
+                icon="restaurant"
+                title="Todo el menú"
+                subtitle={
+                  query || category !== 'todas'
+                    ? `${pizzas.length + addons.length} resultados`
+                    : `${PIZZAS.length} pizzas y ${ADDONS.length} acompañamientos`
+                }
+              />
+
+              {nothingFound ? (
+                <Card style={styles.noResults}>
+                  <Text variant="bodyStrong" center>
+                    Sin resultados
+                  </Text>
+                  <Text variant="caption" tone="secondary" center>
+                    Probá con otra búsqueda o cambiá de categoría.
+                  </Text>
+                  <Button
+                    label="Ver todo el menú"
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => {
+                      setQuery('');
+                      setCategory('todas');
+                    }}
+                  />
+                </Card>
+              ) : (
+                <View style={styles.grid}>
+                  {pizzas.map((pizza) => (
+                    <PizzaCard
+                      key={pizza.id}
+                      pizza={pizza}
+                      wide={isWide}
+                      onPress={() => router.push(`/constructor/${pizza.id}`)}
+                    />
+                  ))}
+                  {addons.map((addon) => (
+                    <AddonCard
+                      key={addon.id}
+                      addon={addon}
+                      wide={isWide}
+                      onPress={() => addAddon(addon.id)}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           </Bounded>
         </View>
       </ScrollView>
@@ -176,10 +301,200 @@ export default function HomeScreen() {
   );
 }
 
-/* ── Bloque de recompra ───────────────────────────────────────────────────── */
+/* ── Barra superior ───────────────────────────────────────────────────────── */
+
+function SearchField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  return (
+    <View style={styles.search}>
+      <Icon name="search" size={16} color={color.inkMuted} />
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder="Buscar en el menú…"
+        placeholderTextColor={color.inkMuted}
+        accessibilityLabel="Buscar en el menú"
+        style={styles.searchInput}
+      />
+      {value.length > 0 ? (
+        <Pressable
+          onPress={() => onChange('')}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Borrar búsqueda">
+          <Icon name="close-circle" size={16} color={color.inkMuted} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function CategoryChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      style={({ pressed }) => [
+        styles.categoryChip,
+        selected && styles.categoryChipSelected,
+        pressed && styles.pressed,
+      ]}>
+      <Text variant="caption" tone={selected ? 'onBrand' : 'secondary'}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/* ── Entrega ──────────────────────────────────────────────────────────────── */
+
+function ModeTab({
+  icon,
+  label,
+  selected,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      style={({ pressed }) => [
+        styles.modeTab,
+        selected && styles.modeTabSelected,
+        pressed && styles.pressed,
+      ]}>
+      <Icon name={icon} size={17} color={selected ? color.brand : color.inkSecondary} />
+      <Text variant="bodyStrong" tone={selected ? 'brand' : 'secondary'}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Tarjeta de momento de entrega.
+ *
+ * `comingSoon` la deja visible pero inerte. Programar el pedido no está construido, y
+ * mostrar un control que no hace nada es peor que mostrarlo marcado: el usuario lo toca,
+ * no pasa nada, y deja de confiar en el resto de la pantalla.
+ */
+function FulfilmentCard({
+  icon,
+  title,
+  subtitle,
+  address,
+  status,
+  selected = false,
+  comingSoon = false,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  address: string;
+  status?: string;
+  selected?: boolean;
+  comingSoon?: boolean;
+}) {
+  return (
+    <View
+      style={[styles.fulfilmentCard, selected && styles.fulfilmentCardSelected]}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected, disabled: comingSoon }}>
+      <View style={styles.fulfilmentTop}>
+        <View style={[styles.fulfilmentIcon, selected && styles.fulfilmentIconSelected]}>
+          <Icon
+            name={icon}
+            size={18}
+            color={selected ? color.brand : color.inkSecondary}
+          />
+        </View>
+
+        <View style={styles.fulfilmentText}>
+          <Text variant="bodyStrong" tone={comingSoon ? 'secondary' : 'default'}>
+            {title}
+          </Text>
+          <Text variant="micro" tone="secondary">
+            {subtitle}
+          </Text>
+        </View>
+
+        {selected ? (
+          <View style={styles.radioOuter}>
+            <View style={styles.radioInner} />
+          </View>
+        ) : comingSoon ? (
+          <Chip label="Etapa 2" tone="neutral" />
+        ) : null}
+      </View>
+
+      {status ? (
+        <View style={styles.statusRow}>
+          <View style={styles.statusDot} />
+          <Text variant="micro" tone="success">
+            {status}
+          </Text>
+        </View>
+      ) : null}
+
+      <Divider style={styles.fulfilmentDivider} />
+
+      <View style={styles.addressRow}>
+        <Icon name="location-outline" size={13} color={color.inkMuted} />
+        <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
+          {address}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Comunica una regla de negocio real, no una promoción inventada. Ver `pricing.ts`. */
+function PromoBanner({ mode }: { mode: 'delivery' | 'retiro' }) {
+  const isPickup = mode === 'retiro';
+
+  return (
+    <View style={styles.promo}>
+      <View style={styles.promoIcon}>
+        <Icon name="pricetag" size={18} color={color.brand} />
+      </View>
+
+      <View style={styles.promoText}>
+        <Text variant="bodyStrong">
+          {isPickup ? 'Retirando no pagás envío' : `Envío gratis desde ${formatPrice(FREE_DELIVERY_FROM)}`}
+        </Text>
+        <Text variant="micro" tone="secondary">
+          {isPickup
+            ? 'El total no lleva costo de entrega'
+            : 'Se aplica solo al llegar al monto, sin cupón'}
+        </Text>
+      </View>
+
+      <View style={styles.promoBadge}>
+        <Text variant="micro" tone="onBrand">
+          {isPickup ? 'SIN ENVÍO' : 'GRATIS'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/* ── Recompra ─────────────────────────────────────────────────────────────── */
 
 function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void }) {
-  // Resumen en una línea: el usuario reconoce su pedido sin tener que leer un detalle.
   const summary = order.lines.map(describeLine).filter(Boolean).join(' · ');
   const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
 
@@ -192,12 +507,11 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
         </Text>
       </View>
 
-      <Text variant="h3" numberOfLines={2} style={styles.lastOrderTitle}>
+      <Text variant="h3" numberOfLines={2}>
         {summary}
       </Text>
 
-      {/* Fila de métricas: el dato manda, la etiqueta acompaña. Le da al bloque la
-          densidad de un tablero y responde de un vistazo "¿qué estoy por repetir?". */}
+      {/* El dato manda y la etiqueta acompaña: responde "¿qué estoy por repetir?" de un vistazo. */}
       <View style={styles.statsRow}>
         <StatTile value={String(itemCount)} label={pluralizeItems(itemCount).split(' ')[1]} />
         <View style={styles.statDivider} />
@@ -205,8 +519,6 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
         <View style={styles.statDivider} />
         <StatTile value={`${ETA_MIN}-${ETA_MAX}'`} label="Minutos" />
       </View>
-
-      <Divider style={styles.lastOrderDivider} />
 
       <Button
         label="Repetir pedido"
@@ -219,62 +531,38 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
 
 /* ── Catálogo ─────────────────────────────────────────────────────────────── */
 
-function SectionHead({ title, hint }: { title: string; hint?: string }) {
+function SectionTitle({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+}) {
   return (
-    <View style={styles.sectionHead}>
-      <Text variant="h2">{title}</Text>
-      {hint ? (
+    <View style={styles.sectionTitle}>
+      <View style={styles.sectionIcon}>
+        <Icon name={icon} size={17} color={color.brand} />
+      </View>
+      <View>
+        <Text variant="h2">{title}</Text>
         <Text variant="micro" tone="secondary">
-          {hint}
+          {subtitle}
         </Text>
-      ) : null}
+      </View>
     </View>
   );
 }
 
-function PopularCard({
+function PizzaCard({
   pizza,
   onPress,
-  wide = false,
+  wide,
 }: {
   pizza: Pizza;
   onPress: () => void;
-  wide?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${pizza.name}, desde ${formatPrice(priceFrom(pizza.id))}`}
-      style={({ pressed }) => [
-        styles.popularCard,
-        wide && styles.popularCardWide,
-        pressed && styles.pressed,
-      ]}>
-      <View style={styles.popularArt}>
-        <PizzaArt diameter={wide ? 116 : 92} baseToppingIds={pizza.baseToppingIds} />
-      </View>
-      <Text variant="captionStrong" numberOfLines={1}>
-        {pizza.name}
-      </Text>
-      <Text variant="micro" tone="secondary">
-        Desde{' '}
-        <Text variant="micro" tone="brand">
-          {formatPrice(priceFrom(pizza.id))}
-        </Text>
-      </Text>
-    </Pressable>
-  );
-}
-
-function MenuRow({
-  pizza,
-  onPress,
-  wide = false,
-}: {
-  pizza: Pizza;
-  onPress: () => void;
-  wide?: boolean;
+  wide: boolean;
 }) {
   return (
     <Pressable
@@ -282,29 +570,87 @@ function MenuRow({
       accessibilityRole="button"
       accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
       style={({ pressed }) => [
-        styles.menuRow,
-        wide && styles.menuRowWide,
+        styles.productCard,
+        wide ? styles.productCardWide : styles.productCardNarrow,
         pressed && styles.pressed,
       ]}>
-      <View style={styles.menuArt}>
-        <PizzaArt diameter={60} baseToppingIds={pizza.baseToppingIds} />
+      <View style={styles.photoWrap}>
+        <Image
+          source={pizza.image}
+          style={styles.photo}
+          contentFit="cover"
+          transition={180}
+          accessibilityLabel={pizza.name}
+        />
+        {/* Precio sobre la foto, como en la referencia: se compara el catálogo sin tener
+            que bajar la vista al pie de cada tarjeta. */}
+        <View style={styles.pricePill}>
+          <Text variant="captionStrong">{formatPrice(priceFrom(pizza.id))}</Text>
+        </View>
       </View>
 
-      <View style={styles.menuText}>
-        <Text variant="bodyStrong">{pizza.name}</Text>
-        {/* Dos líneas como techo: una descripción larga empuja el precio fuera de vista. */}
-        <Text variant="micro" tone="secondary" numberOfLines={2}>
+      <View style={styles.productBody}>
+        <Text variant="bodyStrong" numberOfLines={1}>
+          {pizza.name}
+        </Text>
+        <Text variant="micro" tone="secondary" numberOfLines={2} style={styles.productDesc}>
           {pizza.description}
         </Text>
-        <Text variant="captionStrong" tone="brand">
-          Desde {formatPrice(priceFrom(pizza.id))}
+
+        <View style={styles.addButton} pointerEvents="none">
+          <Icon name="add" size={20} color={color.onBrand} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Bebidas, acompañamientos y postres.
+ *
+ * Sin fotografía: la carpeta provista solo trae pizzas. En vez de rellenar con una imagen
+ * genérica que no es el producto, la tarjeta usa un panel tintado con la inicial. Se lee
+ * como decisión y no como imagen faltante, y se reemplaza el día que haya fotos reales.
+ */
+function AddonCard({
+  addon,
+  onPress,
+  wide,
+}: {
+  addon: Addon;
+  onPress: () => void;
+  wide: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Agregar ${addon.name} ${addon.detail}, ${formatPrice(addon.price)}`}
+      style={({ pressed }) => [
+        styles.productCard,
+        wide ? styles.productCardWide : styles.productCardNarrow,
+        pressed && styles.pressed,
+      ]}>
+      <View style={[styles.photoWrap, styles.addonArt, { backgroundColor: addon.color }]}>
+        <Text variant="display" tone="onBrand">
+          {addon.name.charAt(0)}
         </Text>
+        <View style={styles.pricePill}>
+          <Text variant="captionStrong">{formatPrice(addon.price)}</Text>
+        </View>
       </View>
 
-      {/* Afordancia visual de "agregar". El área táctil es la fila entera. */}
-      <View style={styles.addGlyph} pointerEvents="none">
-        <View style={styles.addBarH} />
-        <View style={styles.addBarV} />
+      <View style={styles.productBody}>
+        <Text variant="bodyStrong" numberOfLines={1}>
+          {addon.name}
+        </Text>
+        <Text variant="micro" tone="secondary" numberOfLines={2} style={styles.productDesc}>
+          {addon.detail}
+        </Text>
+
+        <View style={styles.addButton} pointerEvents="none">
+          <Icon name="add" size={20} color={color.onBrand} />
+        </View>
       </View>
     </Pressable>
   );
@@ -313,99 +659,184 @@ function MenuRow({
 const styles = StyleSheet.create({
   content: { paddingBottom: space.huge },
 
-  header: {
-    paddingHorizontal: space.xl,
-    paddingBottom: space.xxl,
+  /* Barra superior */
+  appBar: {
     backgroundColor: color.surface,
     borderBottomWidth: 1,
     borderBottomColor: color.border,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.md,
   },
-  addressPill: {
+  appBarTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    alignSelf: 'flex-start',
-    marginTop: space.sm,
-    paddingVertical: space.xs2,
-    paddingHorizontal: space.md,
-    borderRadius: radius.full,
-    backgroundColor: color.surfaceMuted,
-    maxWidth: '100%',
+    justifyContent: 'space-between',
+    gap: space.lg,
   },
-  pin: { width: 8, height: 8, borderRadius: radius.full, backgroundColor: color.brand },
-  addressText: { flexShrink: 1 },
-
-  body: { padding: space.xl },
-  stack: { gap: space.xxl },
-  section: { gap: space.md },
-  sectionHead: { gap: 1 },
-
-  popularRow: { gap: space.md, paddingRight: space.xs },
-  popularGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
-  popularCard: {
-    width: 124,
-    padding: space.md,
-    borderRadius: radius.card,
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    gap: 1,
-    ...elevation.card,
-  },
-  popularCardWide: { width: 176, padding: space.lg },
-  popularArt: { alignItems: 'center', marginBottom: space.sm },
-
-  menuList: { gap: space.md },
-  // Dos columnas en escritorio. `48%` y no `50%` para que el `gap` no fuerce un salto de
-  // línea por redondeo de subpíxeles.
-  menuGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.card,
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    ...elevation.card,
-  },
-  menuRowWide: { width: '48%' },
-  // La ilustración sobre su propio cuadro gris: separa el producto de la ficha y le da
-  // el ritmo de fila de tabla que tiene el panel.
-  menuArt: {
-    width: 68,
-    height: 68,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuText: { flex: 1, gap: 1 },
-  addGlyph: {
-    width: 34,
-    height: 34,
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexShrink: 1 },
+  logo: {
+    width: 38,
+    height: 38,
     borderRadius: radius.md,
     backgroundColor: color.brand,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBarH: { width: 12, height: 1.5, borderRadius: 1, backgroundColor: color.onBrand },
-  addBarV: {
-    position: 'absolute',
-    width: 1.5,
-    height: 12,
-    borderRadius: 1,
+  appBarActions: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  cartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    height: 40,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.full,
+    backgroundColor: color.brand,
+  },
+  cartCount: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: radius.full,
     backgroundColor: color.onBrand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartCountText: { lineHeight: 16 },
+
+  mobileSearch: { marginTop: space.md },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    height: 40,
+    minWidth: 200,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: color.ink, outlineStyle: 'none' } as object,
+
+  chipRow: { gap: space.sm, paddingTop: space.lg, paddingRight: space.xl },
+  categoryChip: {
+    paddingHorizontal: space.lg,
+    height: 34,
+    justifyContent: 'center',
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  categoryChipSelected: { backgroundColor: color.brand, borderColor: color.brand },
+
+  body: { padding: space.xl },
+  stack: { gap: space.xl },
+
+  /* Entrega */
+  modeSwitch: {
+    flexDirection: 'row',
+    gap: space.xs,
+    padding: space.xs,
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceMuted,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    minHeight: touchTarget - 8,
+    borderRadius: radius.sm,
+  },
+  modeTabSelected: { backgroundColor: color.surface, ...elevation.card },
+
+  fulfilmentRow: { flexDirection: 'row', gap: space.lg },
+  fulfilmentColumn: { flexDirection: 'column' },
+  fulfilmentCard: {
+    flex: 1,
+    padding: space.lg,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surface,
+    gap: space.sm,
+  },
+  fulfilmentCardSelected: { borderColor: color.brand, borderWidth: 2 },
+  fulfilmentTop: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  fulfilmentIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fulfilmentIconSelected: { backgroundColor: color.brandSoft },
+  fulfilmentText: { flex: 1, gap: 1 },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: color.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 9,
+    height: 9,
+    borderRadius: radius.full,
+    backgroundColor: color.brand,
+  },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: radius.full,
+    backgroundColor: color.successFill,
+  },
+  fulfilmentDivider: { marginTop: space.xs },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  addressText: { flexShrink: 1 },
+
+  /* Promoción */
+  promo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.card,
+    backgroundColor: color.brandSoft,
+    borderWidth: 1,
+    borderColor: color.brandBorder,
+  },
+  promoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: color.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoText: { flex: 1, gap: 1 },
+  promoBadge: {
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs2,
+    borderRadius: radius.xs,
+    backgroundColor: color.brand,
   },
 
+  /* Recompra */
   lastOrderCard: { gap: space.md, ...elevation.raised },
   lastOrderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  lastOrderTitle: { marginTop: -space.xs },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -415,7 +846,63 @@ const styles = StyleSheet.create({
     borderColor: color.border,
   },
   statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.border },
-  lastOrderDivider: { marginTop: space.xs },
 
-  pressed: { opacity: 0.65 },
+  /* Secciones */
+  section: { gap: space.lg },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  sectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: color.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* Tarjetas de producto */
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
+  productCard: {
+    borderRadius: radius.card,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.border,
+    overflow: 'hidden',
+    ...elevation.card,
+  },
+  // Tres columnas en escritorio, una en móvil. El `gap` de 16 se descuenta del ancho.
+  productCardWide: { width: '31.8%' },
+  productCardNarrow: { width: '100%' },
+  photoWrap: { width: '100%', aspectRatio: 16 / 10, backgroundColor: color.surfaceMuted },
+  photo: { width: '100%', height: '100%' },
+  addonArt: { alignItems: 'center', justifyContent: 'center' },
+  pricePill: {
+    position: 'absolute',
+    left: space.md,
+    bottom: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs2,
+    borderRadius: radius.full,
+    backgroundColor: color.surface,
+    ...elevation.card,
+  },
+  productBody: { padding: space.lg, gap: 2 },
+  productDesc: { paddingRight: 44 },
+  // Superpuesto al pie de la tarjeta, como en la referencia. `pointerEvents: none`: el
+  // área táctil es la tarjeta entera, así que el botón es afordancia visual, no un blanco
+  // chico que hay que acertar.
+  addButton: {
+    position: 'absolute',
+    right: space.lg,
+    bottom: space.lg,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: color.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  noResults: { alignItems: 'center', gap: space.md, paddingVertical: space.xxl },
+
+  pressed: { opacity: 0.75 },
 });

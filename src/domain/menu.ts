@@ -9,7 +9,7 @@
  * de tres evita que el menú se desincronice cuando cambian los precios.
  */
 
-import type { Addon, Crust, Pizza, Size, Topping } from './types';
+import type { Addon, Crust, MenuCategory, Pizza, Size, Topping } from './types';
 
 export const SIZES: Size[] = [
   { id: 'chica', name: 'Chica', detail: '6 porciones', priceDelta: -2500, toppingMultiplier: 0.75, scale: 0.82 },
@@ -37,11 +37,25 @@ export const TOPPINGS: Topping[] = [
 ];
 
 export const ADDONS: Addon[] = [
-  { id: 'coca15', name: 'Coca-Cola', detail: '1.5 L', price: 2500, color: '#B03A2E' },
-  { id: 'agua', name: 'Agua mineral', detail: '500 ml', price: 1800, color: '#7FB2D9' },
-  { id: 'faina', name: 'Fainá', detail: 'Porción', price: 1900, color: '#E8B06A' },
-  { id: 'cerveza', name: 'Cerveza artesanal', detail: '473 ml', price: 2800, color: '#C68A3E' },
-  { id: 'postre', name: 'Flan casero', detail: 'Con dulce de leche', price: 2200, color: '#C9884A' },
+  { id: 'coca15', name: 'Coca-Cola', detail: '1.5 L', price: 2500, color: '#B03A2E', category: 'bebidas' },
+  { id: 'agua', name: 'Agua mineral', detail: '500 ml', price: 1800, color: '#7FB2D9', category: 'bebidas' },
+  { id: 'cerveza', name: 'Cerveza artesanal', detail: '473 ml', price: 2800, color: '#C68A3E', category: 'bebidas' },
+  { id: 'faina', name: 'Fainá', detail: 'Porción', price: 1900, color: '#E8B06A', category: 'acompanamientos' },
+  { id: 'postre', name: 'Flan casero', detail: 'Con dulce de leche', price: 2200, color: '#C9884A', category: 'postres' },
+];
+
+/**
+ * Categorías del menú, en el orden en que se muestran los chips.
+ *
+ * "Todas" no es una categoría del modelo: es el estado sin filtro, y por eso vive acá y
+ * no en `MenuCategory`.
+ */
+export const CATEGORIES: { id: MenuCategory | 'todas'; label: string }[] = [
+  { id: 'todas', label: 'Todas' },
+  { id: 'pizzas', label: 'Pizzas' },
+  { id: 'bebidas', label: 'Bebidas' },
+  { id: 'acompanamientos', label: 'Para compartir' },
+  { id: 'postres', label: 'Postres' },
 ];
 
 export const PIZZAS: Pizza[] = [
@@ -52,6 +66,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 10400,
     baseToppingIds: ['aceitunas'],
     popular: true,
+    image: require('@/assets/images/pizzas/muzzarella.jpg'),
   },
   {
     id: 'napolitana',
@@ -60,6 +75,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 11400,
     baseToppingIds: ['tomate', 'albahaca'],
     popular: true,
+    image: require('@/assets/images/pizzas/napolitana.jpg'),
   },
   {
     id: 'fugazzeta',
@@ -68,6 +84,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 11900,
     baseToppingIds: ['cebolla'],
     popular: true,
+    image: require('@/assets/images/pizzas/fugazzeta.jpg'),
   },
   {
     id: 'calabresa',
@@ -76,6 +93,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 12400,
     baseToppingIds: ['pepperoni', 'morron'],
     popular: false,
+    image: require('@/assets/images/pizzas/calabresa.jpg'),
   },
   {
     id: 'cuatro-quesos',
@@ -84,6 +102,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 13200,
     baseToppingIds: ['roquefort'],
     popular: false,
+    image: require('@/assets/images/pizzas/cuatro-quesos.jpg'),
   },
   {
     id: 'especial',
@@ -92,6 +111,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 12900,
     baseToppingIds: ['jamon', 'morron', 'huevo', 'aceitunas'],
     popular: false,
+    image: require('@/assets/images/pizzas/especial.jpg'),
   },
 ];
 

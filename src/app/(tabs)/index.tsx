@@ -509,7 +509,10 @@ const styles = StyleSheet.create({
     marginBottom: space.lg,
   },
 
-  columns: { flexDirection: 'row', gap: space.xl, alignItems: 'flex-start' },
+  // Sin `alignItems`, que por defecto es `stretch`: así la columna derecha toma el alto
+  // de la izquierda y la portada puede llenarlo. Con `flex-start` la portada se quedaba
+  // en su alto mínimo y dejaba un hueco gris debajo.
+  columns: { flexDirection: 'row', gap: space.xl },
   columnLeft: { flex: 1 },
   columnRight: { flex: 1.15 },
   column: { gap: space.lg },
@@ -523,7 +526,9 @@ const styles = StyleSheet.create({
     backgroundColor: color.ink,
     ...elevation.card,
   },
-  heroWide: { minHeight: 620 },
+  // `flex: 1` llena el alto de la columna, que a su vez iguala a la del menú. El
+  // `minHeight` queda como piso para cuando el menú es corto (una sola pestaña filtrada).
+  heroWide: { flex: 1, minHeight: 620 },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // Velo obligatorio: sin él, el texto depende de qué zona de la foto le toque detrás.
   heroScrim: {

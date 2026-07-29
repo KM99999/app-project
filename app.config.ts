@@ -24,10 +24,14 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'light',
   ios: {
     supportsTablet: true,
+    // Identificador de la app en la App Store. Hace falta para cualquier build nativa.
+    bundleIdentifier: 'com.forno.pizzas',
   },
   android: {
+    // Identificador de la app en Google Play. Hace falta para cualquier build nativa.
+    package: 'com.forno.pizzas',
     adaptiveIcon: {
-      backgroundColor: '#FDEDE9',
+      backgroundColor: '#FFF1EA',
       foregroundImage: './assets/images/android-icon-foreground.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
@@ -42,7 +46,7 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#C8321E',
+        backgroundColor: '#F26522',
         image: './assets/images/splash-icon.png',
         imageWidth: 96,
       },

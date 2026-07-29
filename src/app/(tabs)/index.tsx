@@ -509,7 +509,13 @@ function AddonRow({
         twoUp && styles.rowTwoUp,
         pressed && styles.pressed,
       ]}>
-      <Image source={addon.image} style={styles.rowPhoto} contentFit="cover" transition={160} />
+      {/* El tinte del producto queda de fondo mientras la foto decodifica. */}
+      <Image
+        source={addon.image}
+        style={[styles.rowPhoto, { backgroundColor: addon.color }]}
+        contentFit="cover"
+        transition={160}
+      />
 
       <View style={styles.rowText}>
         <Text variant="bodyStrong" numberOfLines={1}>

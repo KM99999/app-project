@@ -296,7 +296,15 @@ function AddonCard({ addon, onPress }: { addon: Addon; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={`Agregar ${addon.name} ${addon.detail}, ${formatPrice(addon.price)}`}
       style={({ pressed }) => [styles.addonCard, pressed && styles.pressed]}>
-      <View style={[styles.addonSwatch, { backgroundColor: addon.color }]} />
+      {/* El tinte del producto queda de fondo: si la foto tarda en decodificar, el hueco
+          no parpadea en gris. */}
+      <Image
+        source={addon.image}
+        style={[styles.addonPhoto, { backgroundColor: addon.color }]}
+        contentFit="cover"
+        transition={160}
+        accessibilityLabel={addon.name}
+      />
       <Text variant="captionStrong" numberOfLines={1}>
         {addon.name}
       </Text>
@@ -338,10 +346,14 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     gap: 1,
   },
-  addonSwatch: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
+  // Foto circular, igual que en las filas del menú de Inicio. Antes era un cuadrado de
+  // color plano: quedó de cuando estos productos todavía no tenían fotografía, y no se
+  // actualizó al incorporarlas.
+  addonPhoto: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
     marginBottom: space.sm,
   },
 

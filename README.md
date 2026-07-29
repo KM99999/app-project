@@ -64,13 +64,46 @@ npm run android  # emulador de Android
 npm run web      # navegador
 ```
 
-Para probarlo en un teléfono real: instalá **Expo Go**, corré `npm start` y escaneá el
-código QR.
-
 ```bash
 npm run typecheck   # tsc --noEmit
 npm run build:web   # export estático a dist/
 ```
+
+---
+
+## Cómo tenerla como app en el teléfono
+
+Esto **es** una app React Native. La web es solo una vista previa compartible.
+
+### 1 · Expo Go — al instante, sin cuenta
+
+Instalá **Expo Go** ([Android](https://play.google.com/store/apps/details?id=host.exp.exponent) ·
+[iOS](https://apps.apple.com/app/expo-go/id982107779)), corré `npm start` y escaneá el
+código QR. La app corre de forma nativa en el teléfono.
+
+El teléfono tiene que estar en la misma red que la computadora. Si no lo está, o si hay una
+VPN activa, usá `npx expo start --tunnel` (requiere `npm i -g @expo/ngrok`).
+
+### 2 · APK instalable — para pasarle al cliente
+
+Genera un archivo que se instala y se comparte, sin Expo Go de por medio:
+
+```bash
+npx eas login          # una sola vez, cuenta de Expo gratuita
+npx eas build -p android --profile preview
+```
+
+El build corre en los servidores de Expo y devuelve un enlace de descarga. Los perfiles
+están en [`eas.json`](eas.json): `preview` produce APK, `production` produce el app bundle
+que pide Google Play.
+
+**No se puede compilar localmente en la máquina actual:** no hay SDK de Android ni JDK
+instalados. Por eso el build va por EAS.
+
+### 3 · iOS
+
+`npx eas build -p ios` necesita cuenta de Apple Developer (99 USD al año). Para probar sin
+eso, Expo Go alcanza.
 
 ---
 

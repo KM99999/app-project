@@ -115,6 +115,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 10400,
     baseToppingIds: ['aceitunas'],
     popular: true,
+    vegetarian: true,
     image: require('@/assets/images/pizzas/muzzarella.jpg'),
   },
   {
@@ -124,6 +125,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 11400,
     baseToppingIds: ['tomate', 'albahaca'],
     popular: true,
+    vegetarian: true,
     image: require('@/assets/images/pizzas/napolitana.jpg'),
   },
   {
@@ -133,6 +135,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 11900,
     baseToppingIds: ['cebolla'],
     popular: true,
+    vegetarian: true,
     image: require('@/assets/images/pizzas/fugazzeta.jpg'),
   },
   {
@@ -142,6 +145,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 12400,
     baseToppingIds: ['pepperoni', 'morron'],
     popular: false,
+    vegetarian: false,
     image: require('@/assets/images/pizzas/calabresa.jpg'),
   },
   {
@@ -151,6 +155,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 13200,
     baseToppingIds: ['roquefort'],
     popular: false,
+    vegetarian: true,
     image: require('@/assets/images/pizzas/cuatro-quesos.jpg'),
   },
   {
@@ -160,6 +165,7 @@ export const PIZZAS: Pizza[] = [
     basePrice: 12900,
     baseToppingIds: ['jamon', 'morron', 'huevo', 'aceitunas'],
     popular: false,
+    vegetarian: false,
     image: require('@/assets/images/pizzas/especial.jpg'),
   },
 ];

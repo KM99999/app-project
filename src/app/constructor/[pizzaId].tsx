@@ -64,7 +64,13 @@ export function generateStaticParams(): Record<string, string>[] {
 
 export default function BuilderScreen() {
   const router = useRouter();
-  const { pizzaId, lineId } = useLocalSearchParams<{ pizzaId: string; lineId?: string }>();
+  // `size` llega desde las iniciales de tamaño del menú (C · M · G): permite entrar al
+  // Constructor con el tamaño ya elegido en lugar de tener que corregirlo acá.
+  const { pizzaId, lineId, size: sizeParam } = useLocalSearchParams<{
+    pizzaId: string;
+    lineId?: string;
+    size?: string;
+  }>();
   const { addPizza, addAddon, replacePizza, lines } = useOrder();
 
   const pizza = getPizza(pizzaId);
@@ -72,7 +78,11 @@ export default function BuilderScreen() {
   const editingConfig =
     editingLine && editingLine.kind === 'pizza' ? editingLine.config : undefined;
 
-  const [sizeId, setSizeId] = useState<SizeId>(editingConfig?.sizeId ?? DEFAULT_SIZE_ID);
+  // Prioridad: lo que se está editando, luego lo que pidió el menú, luego el default.
+  const requestedSize = SIZES.find((option) => option.id === sizeParam)?.id;
+  const [sizeId, setSizeId] = useState<SizeId>(
+    editingConfig?.sizeId ?? requestedSize ?? DEFAULT_SIZE_ID
+  );
   const [crustId, setCrustId] = useState<CrustId>(editingConfig?.crustId ?? DEFAULT_CRUST_ID);
   const [extras, setExtras] = useState<ToppingSelection[]>(editingConfig?.extras ?? []);
   const [quantity, setQuantity] = useState(editingLine?.quantity ?? 1);

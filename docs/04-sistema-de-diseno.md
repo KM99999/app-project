@@ -4,58 +4,60 @@ Todo lo de este documento está implementado en
 [`src/design-system/tokens.ts`](../src/design-system/tokens.ts). Ese archivo es la fuente
 de verdad; este documento explica el porqué.
 
-**Origen del lenguaje visual.** Tomado de la referencia de diseño de app de delivery
-elegida por el cliente ([*Food Delivery App Design*, Helal
-Hossain](https://dribbble.com/shots/26904673-Food-Delivery-App-Design)): naranja vivo,
-radios grandes, fotografía protagonista y navegación flotante en píldora.
+**Origen del lenguaje visual.** Tomado de la referencia elegida por el cliente
+([*Landing Page · #DailyUi 003*, Anjali
+Aakanchha](https://dribbble.com/shots/13902951-Landing-Page-DailyUi-003)): riel amarillo a
+plena saturación, panel gris, tarjeta de menú con pestañas y panel de portada fotográfico
+con titular amarillo.
 
 ---
 
 ## 1. La idea que ordena la paleta
 
-**Interfaz cálida, fotografía al frente.**
+**El amarillo estructura; la fotografía vende.**
 
-Es un lenguaje de consumo, no de herramienta. La comida ocupa la mayor superficie de cada
-pantalla y la interfaz acompaña en temperatura en lugar de contrastar: naranja, blancos y
-un gris muy claro de fondo.
-
-Los radios grandes hacen la otra mitad del trabajo. Donde un panel de administración usa
-10, acá las tarjetas van en 24 y todo lo accionable es píldora completa. Con la misma
-paleta y radios chicos, el resultado se vería severo.
+El amarillo no se reparte por la pantalla: se concentra en el riel lateral, en los botones
+y en el titular de portada. Todo lo demás es blanco sobre gris claro, para que la comida
+—que ocupa las fotos circulares y el panel de portada— sea lo único saturado que compite
+por la vista.
 
 ---
 
 ## 2. Color
 
-### El problema del naranja, y cómo se resuelve
+### El problema del amarillo, y cómo se resuelve
 
-Esto es lo primero que hay que entender de esta paleta.
+Esto es lo primero que hay que entender de esta paleta, y es más severo que con cualquier
+otro color de marca.
 
-El naranja de la referencia (`#F26522`) da **3.15:1 sobre blanco**. Alcanza para texto
-grande (≥18.66px en negrita) y para elementos no textuales, pero **no para texto normal**,
-que necesita 4.5:1. Es la trampa clásica de estas paletas: se ven espectaculares en una
-maqueta y dejan ilegible la mitad de la app real.
+`#FBD433` da **1.4:1 sobre blanco**. No es "un poco flojo": es **invisible**. En la
+referencia, el título "Menu" está en amarillo sobre blanco y prácticamente no se lee.
 
-La solución tiene dos partes y **ninguna sacrifica el aspecto**:
+De ahí salen tres reglas que el sistema aplica sin excepciones:
 
-1. **`brand` es un color de relleno** — botones, chips activos, acentos. El texto blanco
-   encima va en 19px negrita (variante `button`), que sí califica como texto grande. La
-   referencia ya usa etiquetas grandes y gruesas, así que accesibilidad y diseño empujan
-   para el mismo lado.
-2. **`brandText` es un naranja más profundo** para texto naranja sobre blanco: precios,
-   enlaces, la palabra de acento del título.
+1. **El amarillo es fondo, nunca texto.** Riel, botones, subrayado de pestaña activa, chips.
+2. **Sobre amarillo se escribe con tinta oscura, no con blanco.** Da **12.3:1**; el blanco
+   daría 1.4:1. Por eso `onBrand` es `#161312`. Es la diferencia estructural con una paleta
+   de naranja o índigo, donde el texto legible encima es el blanco.
+3. **Para texto dorado sobre blanco existe `brandText`** (4.92:1). Es lo que se usa donde
+   la referencia pone amarillo sobre blanco: se conserva la intención cromática y el texto
+   se lee.
+
+La única excepción es el **titular de portada**: amarillo sobre foto con velo oscuro. Ahí
+el amarillo sí es color de texto, y funciona.
 
 El mapeo vive en [`text.tsx`](../src/design-system/text.tsx): el tono `brand` resuelve
 **siempre** a `brandText`. Por eso es imposible equivocarse desde una pantalla.
 
 | Token | Valor | Uso | Contraste sobre blanco |
 |---|---|---|---|
-| `brand` | `#F26522` | **Relleno**: botones, chips activos | **3.15:1** ⚠️ solo texto grande |
-| `brandText` | `#C2410C` | **Texto** naranja sobre blanco | **5.18:1** ✅ AA |
-| `brandPressed` | `#D9541A` | Estado presionado | — |
-| `brandSoft` | `#FFF1EA` | Fondo de chips y filas seleccionadas | fondo |
-| `brandBorder` | `#FBD5C2` | Borde de botón secundario | fondo |
-| `accentSoft` | `#FDF3D7` | Fondo del banner promocional | fondo |
+| `brand` / `rail` | `#FBD433` | **Solo fondo**: riel, botones, subrayados | **1.4:1** ❌ jamás como texto |
+| `onBrand` | `#161312` | **Texto sobre el amarillo** | **12.3:1** ✅ AAA (sobre `brand`) |
+| `brandText` | `#A16207` | **Texto** dorado sobre blanco | **4.92:1** ✅ AA |
+| `brandPressed` | `#EFC41F` | Estado presionado | — |
+| `brandSoft` | `#FEF7DC` | Fondo de chips y filas | fondo |
+| `brandBorder` | `#F7DE7A` | Borde de las filas de menú | fondo |
+| `photoScrim` | `rgba(22,19,18,.55)` | Velo sobre la foto de portada | — |
 
 ### Estados semánticos — leer con atención
 

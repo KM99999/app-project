@@ -14,8 +14,11 @@ import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-nat
 /** Corte a partir del cual se muestra la barra lateral. `lg` del sistema de origen. */
 export const BREAKPOINT_WIDE = 1024;
 
-/** Ancho de la barra lateral. El original usa `max-w-[290px]`. */
-export const SIDEBAR_WIDTH = 280;
+/**
+ * Ancho del riel lateral. Angosto a propósito: en la referencia es una franja de icono más
+ * etiqueta, no un panel de navegación con texto corrido.
+ */
+export const SIDEBAR_WIDTH = 108;
 
 /** Ancho máximo del contenido en grilla (Inicio). Más allá, la fila deja de leerse de un vistazo. */
 export const CONTENT_MAX_WIDTH = 1120;

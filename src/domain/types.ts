@@ -65,6 +65,13 @@ export type Pizza = {
   baseToppingIds: string[];
   popular: boolean;
   /**
+   * Si no lleva carne. Alimenta las pestañas Veg / No veg del menú.
+   *
+   * Es un dato del producto y no una etiqueta de interfaz: quien cambie la receta de una
+   * pizza tiene que poder corregir esto en un solo lugar.
+   */
+  vegetarian: boolean;
+  /**
    * Fotografía del producto, empaquetada con la app (`require`).
    *
    * Es un `require` y no una URL: el prototipo tiene que abrirse sin red y sin estados de

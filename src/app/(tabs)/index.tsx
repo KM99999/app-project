@@ -1,27 +1,26 @@
 /**
  * Inicio — Forno
  *
- * Estructura tomada del formato de referencia de plataformas de pedido:
+ * Estructura tomada de la referencia elegida por el cliente (*Landing Page #DailyUi 003*,
+ * de Anjali Aakanchha):
  *
- *   barra superior (marca · buscador · carrito)
- *   chips de categoría
- *   modo de entrega (delivery / retiro)
- *   tarjetas de momento de entrega
- *   banner de promoción
- *   "Más pedidas" en grilla de fotos
- *   menú completo, filtrable
+ *   panel de portada con foto, titular amarillo y llamada a la acción
+ *   buscador de línea
+ *   tarjeta de menú con pestañas (Veg · No veg · Para compartir)
+ *   filas de producto con foto circular y los tamaños abreviados
+ *
+ * En escritorio va a dos columnas, como el original: menú a la izquierda, portada a la
+ * derecha. En móvil se apila, con la portada arriba.
  *
  * Las dos ideas de producto siguen mandando (ver docs/01-investigacion.md §4): la recompra
- * está sobre el pliegue para el cliente que ya sabe qué quiere, y el catálogo arranca
- * inmediatamente debajo, en el mismo scroll, para el que viene a explorar.
+ * está sobre el pliegue para el cliente que ya sabe qué quiere, y el menú completo queda
+ * inmediatamente disponible para el que viene a explorar.
  *
- * Todo control de esta pantalla hace algo real. El buscador filtra, los chips filtran, y
- * el selector de entrega es el mismo `deliveryMode` que después usa el checkout para
- * calcular el envío. Lo único que no está construido —programar el pedido— se muestra
- * marcado como etapa 2 en lugar de fingir que funciona.
+ * Todo control hace algo real: el buscador filtra, las pestañas filtran, el selector de
+ * entrega es el mismo `deliveryMode` que usa el checkout, y cada letra de tamaño abre el
+ * Constructor con ese tamaño ya elegido.
  */
 
-import { Icon, type IconName } from '@/design-system/icon';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -37,54 +36,52 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/design-system/button';
 import { FLOATING_BAR_CLEARANCE } from '@/design-system/floating-tab-bar';
+import { Icon } from '@/design-system/icon';
 import { Bounded, useIsWide } from '@/design-system/layout';
-import { Card, Chip, Divider, StatTile } from '@/design-system/primitives';
+import { Chip } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
 import { color, elevation, radius, space, touchTarget } from '@/design-system/tokens';
-import { formatPrice, formatRelativeDay, pluralizeItems } from '@/domain/format';
+import { formatPrice, formatRelativeDay } from '@/domain/format';
 import {
   ADDONS,
-  CATEGORIES,
   DEFAULT_ADDRESS,
-  DEFAULT_CRUST_ID,
-  DEFAULT_SIZE_ID,
   ETA_MAX,
   ETA_MIN,
   FREE_DELIVERY_FROM,
+  getPizza,
   PIZZAS,
+  SIZES,
 } from '@/domain/menu';
 import { describeLine, priceFrom } from '@/domain/pricing';
-import type { Addon, MenuCategory, Order, Pizza } from '@/domain/types';
+import type { Addon, Order, Pizza } from '@/domain/types';
 import { useOrder } from '@/store/order-store';
 import { useSectionNav, type SectionId } from '@/store/section-nav';
 
-const USER_NAME = 'Carlos';
 const BRAND = 'Forno';
 
-type CategoryFilter = MenuCategory | 'todas';
+/** Foto de portada. La más apetecible del catálogo: es lo primero que se ve. */
+const HERO_IMAGE = getPizza('cuatro-quesos')?.image;
+
+type MenuTab = 'veg' | 'noveg' | 'sides';
+
+const TABS: { id: MenuTab; label: string }[] = [
+  { id: 'veg', label: 'Veg' },
+  { id: 'noveg', label: 'No veg' },
+  { id: 'sides', label: 'Para compartir' },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
-  const {
-    lastOrder,
-    itemCount,
-    deliveryMode,
-    setDeliveryMode,
-    repeatLastOrder,
-    addAddon,
-    addPizza,
-  } = useOrder();
+  const { lastOrder, deliveryMode, setDeliveryMode, repeatLastOrder, addAddon } = useOrder();
   const { request } = useSectionNav();
 
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<CategoryFilter>('todas');
+  const [tab, setTab] = useState<MenuTab>('veg');
 
   const scrollRef = useRef<ScrollView>(null);
-  // Posición vertical de cada sección. Se llena con onLayout, así que no hay alturas
-  // hardcodeadas que se desincronicen al cambiar el contenido.
   const offsets = useRef<Record<SectionId, number>>({ populares: 0, menu: 0 });
 
   useEffect(() => {
@@ -99,25 +96,28 @@ export default function HomeScreen() {
     offsets.current[section] = event.nativeEvent.layout.y;
   };
 
-  const popular = PIZZAS.filter((pizza) => pizza.popular);
-
   const { pizzas, addons } = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matches = (name: string, description: string) =>
+    const hit = (a: string, b: string) =>
       needle.length === 0 ||
-      name.toLowerCase().includes(needle) ||
-      description.toLowerCase().includes(needle);
+      a.toLowerCase().includes(needle) ||
+      b.toLowerCase().includes(needle);
+
+    // El buscador atraviesa las pestañas: buscar "coca" estando en Veg no debería no
+    // devolver nada. Filtra dentro de la pestaña salvo que haya texto, y entonces busca
+    // en todo el menú.
+    if (needle.length > 0) {
+      return {
+        pizzas: PIZZAS.filter((p) => hit(p.name, p.description)),
+        addons: ADDONS.filter((a) => hit(a.name, a.detail)),
+      };
+    }
 
     return {
-      pizzas:
-        category === 'todas' || category === 'pizzas'
-          ? PIZZAS.filter((p) => matches(p.name, p.description))
-          : [],
-      addons: ADDONS.filter(
-        (a) => (category === 'todas' || a.category === category) && matches(a.name, a.detail)
-      ),
+      pizzas: tab === 'sides' ? [] : PIZZAS.filter((p) => p.vegetarian === (tab === 'veg')),
+      addons: tab === 'sides' ? ADDONS : [],
     };
-  }, [query, category]);
+  }, [query, tab]);
 
   const nothingFound = pizzas.length === 0 && addons.length === 0;
 
@@ -125,214 +125,179 @@ export default function HomeScreen() {
     if (repeatLastOrder()) router.push('/carrito');
   };
 
-  /** Atajo del botón "Agregar": la pizza con los valores por defecto, sin pasar por el
-   *  Constructor. Los defaults son los más pedidos, así que para buena parte de los
-   *  usuarios es exactamente lo que iban a elegir. */
-  const quickAdd = (pizzaId: string) => {
-    addPizza({ pizzaId, sizeId: DEFAULT_SIZE_ID, crustId: DEFAULT_CRUST_ID, extras: [] }, 1);
+  const openPizza = (pizzaId: string, sizeId?: string) => {
+    router.push(sizeId ? `/constructor/${pizzaId}?size=${sizeId}` : `/constructor/${pizzaId}`);
   };
+
+  const goToMenu = () => {
+    scrollRef.current?.scrollTo({
+      y: Math.max(offsets.current.menu - space.lg, 0),
+      animated: true,
+    });
+  };
+
+  const hero = (
+    <HeroPanel
+      wide={isWide}
+      deliveryMode={deliveryMode}
+      onOrder={goToMenu}
+    />
+  );
+
+  const menuPanel = (
+    <View style={styles.column} onLayout={captureOffset('menu')}>
+      <SearchField value={query} onChange={setQuery} />
+
+      <ModeSwitch mode={deliveryMode} onChange={setDeliveryMode} />
+
+      {lastOrder ? (
+        <View onLayout={captureOffset('populares')}>
+          <LastOrderCard order={lastOrder} onRepeat={handleRepeat} />
+        </View>
+      ) : null}
+
+      <View style={styles.menuCard}>
+        <Text variant="h1" tone="brand">
+          Menú
+        </Text>
+
+        <View style={styles.tabs}>
+          {TABS.map((item) => (
+            <MenuTabButton
+              key={item.id}
+              label={item.label}
+              selected={query.length === 0 && tab === item.id}
+              onPress={() => {
+                setQuery('');
+                setTab(item.id);
+              }}
+            />
+          ))}
+        </View>
+
+        {nothingFound ? (
+          <View style={styles.noResults}>
+            <Text variant="bodyStrong" center>
+              Sin resultados
+            </Text>
+            <Text variant="caption" tone="secondary" center>
+              Probá con otro nombre o mirá otra pestaña.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.rows}>
+            {pizzas.map((pizza) => (
+              <PizzaRow
+                key={pizza.id}
+                pizza={pizza}
+                onOpen={(sizeId) => openPizza(pizza.id, sizeId)}
+              />
+            ))}
+            {addons.map((addon) => (
+              <AddonRow key={addon.id} addon={addon} onAdd={() => addAddon(addon.id)} />
+            ))}
+          </View>
+        )}
+      </View>
+    </View>
+  );
 
   return (
     <Screen>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: (isWide ? space.xxl : insets.top) + space.lg },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-        {/* ── Barra superior ─────────────────────────────────────────────── */}
-        <View style={[styles.appBar, { paddingTop: (isWide ? space.xl : insets.top) + space.md }]}>
-          <Bounded>
-            <View style={styles.appBarTop}>
-              <View style={styles.brandRow}>
-                <View style={styles.logo}>
-                  <Text variant="bodyStrong" tone="onBrand">
-                    {BRAND.charAt(0)}
-                  </Text>
-                </View>
-                {/* Palabra de acento en naranja, como el "Eat Fresh Pizza" de la
-                    referencia. Usa el tono `brand`, que resuelve al naranja profundo y
-                    cumple AA — el vivo acá sería un título ilegible. */}
-                <Text variant={isWide ? 'h1' : 'h2'} numberOfLines={1}>
-                  {BRAND} <Text variant={isWide ? 'h1' : 'h2'} tone="brand">Pizza</Text>
-                </Text>
-              </View>
-
-              <View style={styles.appBarActions}>
-                {isWide ? <SearchField value={query} onChange={setQuery} /> : null}
-                <Pressable
-                  onPress={() => router.push('/carrito')}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    itemCount > 0 ? `Carrito, ${itemCount} productos` : 'Carrito, vacío'
-                  }
-                  style={({ pressed }) => [styles.cartButton, pressed && styles.pressed]}>
-                  <Icon name="cart-outline" size={18} color={color.onBrand} />
-                  <Text variant="captionStrong" tone="onBrand">
-                    Carrito
-                  </Text>
-                  {itemCount > 0 ? (
-                    <View style={styles.cartCount}>
-                      <Text variant="micro" tone="brand" style={styles.cartCountText}>
-                        {itemCount}
-                      </Text>
-                    </View>
-                  ) : null}
-                </Pressable>
-              </View>
+        <Bounded>
+          {!isWide ? (
+            <View style={styles.brandRow}>
+              <Icon name="pizza" size={26} color={color.brandText} />
+              <Text variant="h2">
+                {BRAND} <Text variant="h2" tone="brand">Pizza</Text>
+              </Text>
             </View>
+          ) : null}
 
-            {!isWide ? (
-              <View style={styles.mobileSearch}>
-                <SearchField value={query} onChange={setQuery} />
-              </View>
-            ) : null}
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}>
-              {CATEGORIES.map((item) => (
-                <CategoryChip
-                  key={item.id}
-                  label={item.label}
-                  selected={category === item.id}
-                  onPress={() => setCategory(item.id)}
-                />
-              ))}
-            </ScrollView>
-          </Bounded>
-        </View>
-
-        <View style={styles.body}>
-          <Bounded style={styles.stack}>
-            {/* ── Modo de entrega ─────────────────────────────────────────── */}
-            <View style={styles.modeSwitch}>
-              <ModeTab
-                icon="storefront-outline"
-                label="Retiro"
-                selected={deliveryMode === 'retiro'}
-                onPress={() => setDeliveryMode('retiro')}
-              />
-              <ModeTab
-                icon="bicycle-outline"
-                label="Delivery"
-                selected={deliveryMode === 'delivery'}
-                onPress={() => setDeliveryMode('delivery')}
-              />
+          {isWide ? (
+            // Dos columnas, como el original: menú a la izquierda, portada a la derecha.
+            <View style={styles.columns}>
+              <View style={styles.columnLeft}>{menuPanel}</View>
+              <View style={styles.columnRight}>{hero}</View>
             </View>
-
-            <View style={[styles.fulfilmentRow, !isWide && styles.fulfilmentColumn]}>
-              <FulfilmentCard
-                icon="flash-outline"
-                title="Lo antes posible"
-                subtitle={`En ${ETA_MIN}-${ETA_MAX} min`}
-                address={deliveryMode === 'delivery' ? DEFAULT_ADDRESS : 'Av. Corrientes 3400'}
-                status="Disponible"
-                selected
-              />
-              <FulfilmentCard
-                icon="calendar-outline"
-                title="Programar"
-                subtitle="Elegí día y horario"
-                address={deliveryMode === 'delivery' ? DEFAULT_ADDRESS : 'Av. Corrientes 3400'}
-                comingSoon
-              />
+          ) : (
+            <View style={styles.column}>
+              {hero}
+              {menuPanel}
             </View>
-
-            <PromoBanner mode={deliveryMode} />
-
-            {/* ── Recompra ────────────────────────────────────────────────── */}
-            {lastOrder ? <LastOrderCard order={lastOrder} onRepeat={handleRepeat} /> : null}
-
-            {/* ── Más pedidas ─────────────────────────────────────────────── */}
-            <View onLayout={captureOffset('populares')} style={styles.section}>
-              <SectionTitle
-                icon="flame"
-                title="Las más pedidas"
-                subtitle="Lo que más sale del horno"
-              />
-              <View style={styles.grid}>
-                {popular.map((pizza) => (
-                  <PizzaCard
-                    key={pizza.id}
-                    pizza={pizza}
-                    wide={isWide}
-                    onOpen={() => router.push(`/constructor/${pizza.id}`)}
-                    onQuickAdd={() => quickAdd(pizza.id)}
-                  />
-                ))}
-              </View>
-            </View>
-
-            {/* ── Menú completo ───────────────────────────────────────────── */}
-            <View onLayout={captureOffset('menu')} style={styles.section}>
-              <SectionTitle
-                icon="restaurant"
-                title="Todo el menú"
-                subtitle={
-                  query || category !== 'todas'
-                    ? `${pizzas.length + addons.length} resultados`
-                    : `${PIZZAS.length} pizzas y ${ADDONS.length} acompañamientos`
-                }
-              />
-
-              {nothingFound ? (
-                <Card style={styles.noResults}>
-                  <Text variant="bodyStrong" center>
-                    Sin resultados
-                  </Text>
-                  <Text variant="caption" tone="secondary" center>
-                    Probá con otra búsqueda o cambiá de categoría.
-                  </Text>
-                  <Button
-                    label="Ver todo el menú"
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => {
-                      setQuery('');
-                      setCategory('todas');
-                    }}
-                  />
-                </Card>
-              ) : (
-                <View style={styles.grid}>
-                  {pizzas.map((pizza) => (
-                    <PizzaCard
-                      key={pizza.id}
-                      pizza={pizza}
-                      wide={isWide}
-                      onOpen={() => router.push(`/constructor/${pizza.id}`)}
-                      onQuickAdd={() => quickAdd(pizza.id)}
-                    />
-                  ))}
-                  {addons.map((addon) => (
-                    <AddonCard
-                      key={addon.id}
-                      addon={addon}
-                      wide={isWide}
-                      onPress={() => addAddon(addon.id)}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          </Bounded>
-        </View>
+          )}
+        </Bounded>
       </ScrollView>
     </Screen>
   );
 }
 
-/* ── Barra superior ───────────────────────────────────────────────────────── */
+/* ── Portada ──────────────────────────────────────────────────────────────── */
 
+/**
+ * Panel de portada: foto a sangre, titular amarillo y llamada a la acción.
+ *
+ * El amarillo funciona como color de texto **solo acá**, sobre el velo oscuro de la foto.
+ * Sobre blanco daría 1.4:1 y sería invisible. El velo no es decorativo: es lo que hace que
+ * tanto el titular como el texto de apoyo sean legibles sin depender de qué zona de la
+ * fotografía les toque detrás.
+ */
+function HeroPanel({
+  wide,
+  deliveryMode,
+  onOrder,
+}: {
+  wide: boolean;
+  deliveryMode: 'delivery' | 'retiro';
+  onOrder: () => void;
+}) {
+  return (
+    <View style={[styles.hero, wide && styles.heroWide]}>
+      {HERO_IMAGE ? (
+        <Image source={HERO_IMAGE} style={styles.heroImage} contentFit="cover" transition={220} />
+      ) : null}
+      <View style={styles.heroScrim} />
+
+      <View style={styles.heroContent}>
+        <Text variant={wide ? 'display' : 'h1'} style={styles.heroTitle}>
+          EL LUGAR PARA TU AMOR POR LA PIZZA
+        </Text>
+
+        <View style={styles.heroFoot}>
+          <Text variant="bodyStrong" tone="onDark">
+            {deliveryMode === 'delivery'
+              ? `Envío gratis desde ${formatPrice(FREE_DELIVERY_FROM)}`
+              : 'Retiro en el local, sin costo de envío'}
+          </Text>
+          <Text variant="caption" tone="onDark" style={styles.heroSub}>
+            Delivery y retiro · {ETA_MIN}-{ETA_MAX} min
+          </Text>
+
+          <Button label="Pedir online" onPress={onOrder} fullWidth={false} style={styles.heroButton} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ── Controles ────────────────────────────────────────────────────────────── */
+
+/** Buscador de línea, como el de la referencia: sin caja, solo un borde inferior. */
 function SearchField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   return (
     <View style={styles.search}>
-      <Icon name="search" size={16} color={color.inkMuted} />
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Buscar en el menú…"
+        placeholder="Buscar pizza, bebida, postre…"
         placeholderTextColor={color.inkMuted}
         accessibilityLabel="Buscar en el menú"
         style={styles.searchInput}
@@ -340,17 +305,20 @@ function SearchField({ value, onChange }: { value: string; onChange: (next: stri
       {value.length > 0 ? (
         <Pressable
           onPress={() => onChange('')}
-          hitSlop={10}
+          hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Borrar búsqueda">
-          <Icon name="close-circle" size={16} color={color.inkMuted} />
+          <Icon name="close-circle" size={20} color={color.inkMuted} />
         </Pressable>
-      ) : null}
+      ) : (
+        <Icon name="search" size={20} color={color.ink} />
+      )}
     </View>
   );
 }
 
-function CategoryChip({
+/** Pestaña con subrayado amarillo, como en la referencia. */
+function MenuTabButton({
   label,
   selected,
   onPress,
@@ -362,154 +330,57 @@ function CategoryChip({
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      style={({ pressed }) => [
-        styles.categoryChip,
-        selected && styles.categoryChipSelected,
-        pressed && styles.pressed,
-      ]}>
-      <Text variant="caption" tone={selected ? 'onBrand' : 'secondary'}>
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
+      <Text variant={selected ? 'bodyStrong' : 'body'} tone={selected ? 'default' : 'secondary'}>
         {label}
       </Text>
+      {/* El subrayado se dibuja siempre y cambia de color: así la fila no salta de alto
+          cuando cambia la pestaña activa. */}
+      <View style={[styles.tabUnderline, selected && styles.tabUnderlineActive]} />
     </Pressable>
   );
 }
 
-/* ── Entrega ──────────────────────────────────────────────────────────────── */
-
-function ModeTab({
-  icon,
-  label,
-  selected,
-  onPress,
+function ModeSwitch({
+  mode,
+  onChange,
 }: {
-  icon: IconName;
-  label: string;
-  selected: boolean;
-  onPress: () => void;
+  mode: 'delivery' | 'retiro';
+  onChange: (next: 'delivery' | 'retiro') => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      style={({ pressed }) => [
-        styles.modeTab,
-        selected && styles.modeTabSelected,
-        pressed && styles.pressed,
-      ]}>
-      <Icon name={icon} size={17} color={selected ? color.brand : color.inkSecondary} />
-      <Text variant="bodyStrong" tone={selected ? 'brand' : 'secondary'}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-/**
- * Tarjeta de momento de entrega.
- *
- * `comingSoon` la deja visible pero inerte. Programar el pedido no está construido, y
- * mostrar un control que no hace nada es peor que mostrarlo marcado: el usuario lo toca,
- * no pasa nada, y deja de confiar en el resto de la pantalla.
- */
-function FulfilmentCard({
-  icon,
-  title,
-  subtitle,
-  address,
-  status,
-  selected = false,
-  comingSoon = false,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle: string;
-  address: string;
-  status?: string;
-  selected?: boolean;
-  comingSoon?: boolean;
-}) {
-  return (
-    <View
-      style={[styles.fulfilmentCard, selected && styles.fulfilmentCardSelected]}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected, disabled: comingSoon }}>
-      <View style={styles.fulfilmentTop}>
-        <View style={[styles.fulfilmentIcon, selected && styles.fulfilmentIconSelected]}>
-          <Icon
-            name={icon}
-            size={18}
-            color={selected ? color.brand : color.inkSecondary}
-          />
-        </View>
-
-        <View style={styles.fulfilmentText}>
-          <Text variant="bodyStrong" tone={comingSoon ? 'secondary' : 'default'}>
-            {title}
-          </Text>
-          <Text variant="micro" tone="secondary">
-            {subtitle}
-          </Text>
-        </View>
-
-        {selected ? (
-          <View style={styles.radioOuter}>
-            <View style={styles.radioInner} />
-          </View>
-        ) : comingSoon ? (
-          <Chip label="Etapa 2" tone="neutral" />
-        ) : null}
-      </View>
-
-      {status ? (
-        <View style={styles.statusRow}>
-          <View style={styles.statusDot} />
-          <Text variant="micro" tone="success">
-            {status}
-          </Text>
-        </View>
-      ) : null}
-
-      <Divider style={styles.fulfilmentDivider} />
-
-      <View style={styles.addressRow}>
-        <Icon name="location-outline" size={13} color={color.inkMuted} />
-        <Text variant="micro" tone="secondary" numberOfLines={1} style={styles.addressText}>
-          {address}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-/** Comunica una regla de negocio real, no una promoción inventada. Ver `pricing.ts`. */
-function PromoBanner({ mode }: { mode: 'delivery' | 'retiro' }) {
-  const isPickup = mode === 'retiro';
-
-  return (
-    <View style={styles.promo}>
-      <View style={styles.promoIcon}>
-        <Icon name="pricetag" size={18} color={color.brand} />
-      </View>
-
-      <View style={styles.promoText}>
-        <Text variant="bodyStrong">
-          {isPickup ? 'Retirando no pagás envío' : `Envío gratis desde ${formatPrice(FREE_DELIVERY_FROM)}`}
-        </Text>
-        <Text variant="micro" tone="secondary">
-          {isPickup
-            ? 'El total no lleva costo de entrega'
-            : 'Se aplica solo al llegar al monto, sin cupón'}
-        </Text>
-      </View>
-
-      <View style={styles.promoBadge}>
-        <Text variant="micro" tone="onBrand">
-          {isPickup ? 'SIN ENVÍO' : 'GRATIS'}
-        </Text>
-      </View>
+    <View style={styles.modeSwitch}>
+      {(
+        [
+          { id: 'delivery' as const, label: 'Delivery', icon: 'bicycle' as const },
+          { id: 'retiro' as const, label: 'Retiro', icon: 'storefront' as const },
+        ]
+      ).map((option) => {
+        const selected = mode === option.id;
+        return (
+          <Pressable
+            key={option.id}
+            onPress={() => onChange(option.id)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selected }}
+            style={({ pressed }) => [
+              styles.modeTab,
+              selected && styles.modeTabSelected,
+              pressed && styles.pressed,
+            ]}>
+            <Icon
+              name={option.icon}
+              size={17}
+              color={selected ? color.onBrand : color.inkSecondary}
+            />
+            <Text variant="captionStrong" tone={selected ? 'onBrand' : 'secondary'}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -518,11 +389,10 @@ function PromoBanner({ mode }: { mode: 'delivery' | 'retiro' }) {
 
 function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void }) {
   const summary = order.lines.map(describeLine).filter(Boolean).join(' · ');
-  const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
 
   return (
-    <Card style={styles.lastOrderCard}>
-      <View style={styles.lastOrderHeader}>
+    <View style={styles.lastOrder}>
+      <View style={styles.lastOrderHead}>
         <Chip label="Tu último pedido" />
         <Text variant="micro" tone="muted">
           {formatRelativeDay(order.placedAt)}
@@ -532,421 +402,259 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
       <Text variant="h3" numberOfLines={2}>
         {summary}
       </Text>
-
-      {/* El dato manda y la etiqueta acompaña: responde "¿qué estoy por repetir?" de un vistazo. */}
-      <View style={styles.statsRow}>
-        <StatTile value={String(itemCount)} label={pluralizeItems(itemCount).split(' ')[1]} />
-        <View style={styles.statDivider} />
-        <StatTile value={formatPrice(order.total)} label="Total" tone="brand" />
-        <View style={styles.statDivider} />
-        <StatTile value={`${ETA_MIN}-${ETA_MAX}'`} label="Minutos" />
-      </View>
+      <Text variant="caption" tone="secondary">
+        {formatPrice(order.total)} · {order.deliveryMode === 'delivery' ? 'Delivery' : 'Retiro'}
+      </Text>
 
       <Button
         label="Repetir pedido"
         onPress={onRepeat}
         accessibilityHint="Carga el pedido anterior en el carrito para que puedas revisarlo"
+        style={styles.lastOrderButton}
       />
-    </Card>
-  );
-}
-
-/* ── Catálogo ─────────────────────────────────────────────────────────────── */
-
-function SectionTitle({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <View style={styles.sectionTitle}>
-      <View style={styles.sectionIcon}>
-        <Icon name={icon} size={17} color={color.brand} />
-      </View>
-      <View>
-        <Text variant="h2">{title}</Text>
-        <Text variant="micro" tone="secondary">
-          {subtitle}
-        </Text>
-      </View>
     </View>
   );
 }
 
+/* ── Filas de menú ────────────────────────────────────────────────────────── */
+
 /**
- * Tarjeta de pizza, en el formato de la referencia: foto grande con las acciones
- * superpuestas al pie de la imagen.
+ * Fila de pizza: foto circular, nombre y los tamaños abreviados, como en la referencia.
  *
- * Las dos acciones son distintas y las dos son reales:
- * — **Agregar** manda la pizza al carrito con los valores por defecto (mediana, masa
- *   clásica). Es el atajo para quien ya sabe lo que quiere.
- * — **Armar** abre el Constructor. Es el camino de quien quiere personalizar.
- *
- * Tocar la foto equivale a "Armar": el área grande lleva al camino completo, y el atajo
- * queda explícito en su propio botón.
+ * Las iniciales no son decorativas: cada una abre el Constructor con ese tamaño ya
+ * elegido. La referencia muestra "R | M | L" como etiqueta muerta; convertirlas en atajos
+ * reales cuesta lo mismo y ahorra un paso al usuario que ya sabe qué quiere.
  */
-function PizzaCard({
-  pizza,
-  onOpen,
-  onQuickAdd,
-  wide,
-}: {
-  pizza: Pizza;
-  onOpen: () => void;
-  onQuickAdd: () => void;
-  wide: boolean;
-}) {
+function PizzaRow({ pizza, onOpen }: { pizza: Pizza; onOpen: (sizeId?: string) => void }) {
   return (
-    <View style={[styles.productCard, wide ? styles.productCardWide : styles.productCardNarrow]}>
+    <View style={styles.row}>
       <Pressable
-        onPress={onOpen}
+        onPress={() => onOpen()}
         accessibilityRole="button"
         accessibilityLabel={`${pizza.name}. ${pizza.description}. Desde ${formatPrice(priceFrom(pizza.id))}`}
-        style={({ pressed }) => [styles.photoWrap, pressed && styles.pressed]}>
-        <Image
-          source={pizza.image}
-          style={styles.photo}
-          contentFit="cover"
-          transition={180}
-          accessibilityLabel={pizza.name}
-        />
+        style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
+        <Image source={pizza.image} style={styles.rowPhoto} contentFit="cover" transition={160} />
 
-        {/* Precio sobre la foto: se compara el catálogo sin bajar la vista al pie. */}
-        <View style={styles.pricePill}>
-          <Text variant="captionStrong">{formatPrice(priceFrom(pizza.id))}</Text>
+        <View style={styles.rowText}>
+          <Text variant="bodyStrong" numberOfLines={1}>
+            {pizza.name}
+          </Text>
+          <Text variant="micro" tone="secondary" numberOfLines={1}>
+            {pizza.description}
+          </Text>
+          <Text variant="captionStrong" tone="brand">
+            Desde {formatPrice(priceFrom(pizza.id))}
+          </Text>
         </View>
       </Pressable>
 
-      <View style={styles.actionRow}>
-        <Button label="Agregar" variant="secondary" compact fullWidth={false} onPress={onQuickAdd} style={styles.actionButton} />
-        <Button label="Armar" compact fullWidth={false} onPress={onOpen} style={styles.actionButton} />
-      </View>
-
-      <View style={styles.productBody}>
-        <Text variant="bodyStrong" numberOfLines={1}>
-          {pizza.name}
-        </Text>
-        <Text variant="micro" tone="secondary" numberOfLines={2}>
-          {pizza.description}
-        </Text>
+      <View style={styles.sizeRow}>
+        {SIZES.map((size, index) => (
+          <View key={size.id} style={styles.sizeItem}>
+            {index > 0 ? <Text variant="caption" tone="muted">|</Text> : null}
+            <Pressable
+              onPress={() => onOpen(size.id)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${pizza.name}, tamaño ${size.name}`}
+              style={({ pressed }) => [styles.sizeButton, pressed && styles.pressed]}>
+              <Text variant="captionStrong">{size.name.charAt(0)}</Text>
+            </Pressable>
+          </View>
+        ))}
       </View>
     </View>
   );
 }
 
-/** Bebidas, acompañamientos y postres. Se agregan directo al carrito, sin configurar. */
-function AddonCard({
-  addon,
-  onPress,
-  wide,
-}: {
-  addon: Addon;
-  onPress: () => void;
-  wide: boolean;
-}) {
+/** Fila de bebida, acompañamiento o postre. Se agrega directo: no se configura. */
+function AddonRow({ addon, onAdd }: { addon: Addon; onAdd: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={onAdd}
       accessibilityRole="button"
       accessibilityLabel={`Agregar ${addon.name} ${addon.detail}, ${formatPrice(addon.price)}`}
-      style={({ pressed }) => [
-        styles.productCard,
-        wide ? styles.productCardWide : styles.productCardNarrow,
-        pressed && styles.pressed,
-      ]}>
-      {/* El tinte queda de respaldo detrás de la foto: si tarda en decodificar, el hueco
-          no parpadea en gris. */}
-      <View style={[styles.photoWrap, { backgroundColor: addon.color }]}>
-        <Image
-          source={addon.image}
-          style={styles.photo}
-          contentFit="cover"
-          transition={180}
-          accessibilityLabel={addon.name}
-        />
-        <View style={styles.pricePill}>
-          <Text variant="captionStrong">{formatPrice(addon.price)}</Text>
-        </View>
-      </View>
+      style={({ pressed }) => [styles.row, styles.rowMain, pressed && styles.pressed]}>
+      <Image source={addon.image} style={styles.rowPhoto} contentFit="cover" transition={160} />
 
-      {/* Una sola acción: estos productos no se configuran, así que "Armar" no aplica. */}
-      <View style={styles.actionRow}>
-        <View style={styles.addPill} pointerEvents="none">
-          <Icon name="add" size={17} color={color.onBrand} />
-          <Text variant="captionStrong" tone="onBrand">
-            Agregar
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.productBody}>
+      <View style={styles.rowText}>
         <Text variant="bodyStrong" numberOfLines={1}>
           {addon.name}
         </Text>
-        <Text variant="micro" tone="secondary" numberOfLines={2}>
+        <Text variant="micro" tone="secondary" numberOfLines={1}>
           {addon.detail}
         </Text>
+        <Text variant="captionStrong" tone="brand">
+          {formatPrice(addon.price)}
+        </Text>
+      </View>
+
+      <View style={styles.addCircle} pointerEvents="none">
+        <Icon name="add" size={20} color={color.onBrand} />
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  // Deja lugar a la píldora de navegación, que flota sobre el contenido.
-  content: { paddingBottom: FLOATING_BAR_CLEARANCE },
+  content: {
+    paddingHorizontal: space.lg,
+    paddingBottom: FLOATING_BAR_CLEARANCE,
+  },
 
-  /* Barra superior */
-  appBar: {
-    backgroundColor: color.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border,
-    paddingHorizontal: space.xl,
-    paddingBottom: space.md,
-  },
-  appBarTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.lg,
-  },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexShrink: 1 },
-  logo: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
-    backgroundColor: color.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appBarActions: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  cartButton: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    height: 40,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.full,
-    backgroundColor: color.brand,
+    marginBottom: space.lg,
   },
-  cartCount: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: radius.full,
-    backgroundColor: color.onBrand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartCountText: { lineHeight: 16 },
 
-  mobileSearch: { marginTop: space.md },
+  columns: { flexDirection: 'row', gap: space.xl, alignItems: 'flex-start' },
+  columnLeft: { flex: 1 },
+  columnRight: { flex: 1.15 },
+  column: { gap: space.lg },
+
+  /* Portada */
+  hero: {
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    minHeight: 320,
+    justifyContent: 'flex-end',
+    backgroundColor: color.ink,
+    ...elevation.card,
+  },
+  heroWide: { minHeight: 620 },
+  heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // Velo obligatorio: sin él, el texto depende de qué zona de la foto le toque detrás.
+  heroScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: color.photoScrim,
+  },
+  heroContent: { padding: space.xl, gap: space.xxl, justifyContent: 'space-between', flex: 1 },
+  // Amarillo sobre oscuro: el único lugar donde el amarillo hace de color de texto.
+  heroTitle: { color: color.brand, textTransform: 'uppercase' },
+  heroFoot: { gap: space.xs, marginTop: 'auto' },
+  heroSub: { marginBottom: space.md },
+  heroButton: { alignSelf: 'flex-start' },
+
+  /* Buscador */
   search: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm,
-    height: 40,
-    minWidth: 200,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.full,
-    backgroundColor: color.surfaceMuted,
-    borderWidth: 1,
-    borderColor: color.border,
+    gap: space.md,
+    paddingHorizontal: space.sm,
+    paddingBottom: space.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: color.borderStrong,
   },
-  searchInput: { flex: 1, fontSize: 14, color: color.ink, outlineStyle: 'none' } as object,
+  searchInput: {
+    flex: 1,
+    minHeight: touchTarget - 8,
+    fontSize: 15,
+    color: color.ink,
+    outlineStyle: 'none',
+  } as object,
 
-  chipRow: { gap: space.sm, paddingTop: space.lg, paddingRight: space.xl },
-  categoryChip: {
-    paddingHorizontal: space.lg,
-    height: 34,
-    justifyContent: 'center',
-    borderRadius: radius.full,
-    backgroundColor: color.surfaceMuted,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  categoryChipSelected: { backgroundColor: color.brand, borderColor: color.brand },
-
-  body: { padding: space.xl },
-  stack: { gap: space.xl },
-
-  /* Entrega */
+  /* Modo de entrega */
   modeSwitch: {
     flexDirection: 'row',
     gap: space.xs,
     padding: space.xs,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     backgroundColor: color.surfaceMuted,
-    borderWidth: 1,
-    borderColor: color.border,
+    alignSelf: 'flex-start',
   },
   modeTab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: space.sm,
-    minHeight: touchTarget - 8,
-    borderRadius: radius.sm,
-  },
-  modeTabSelected: { backgroundColor: color.surface, ...elevation.card },
-
-  fulfilmentRow: { flexDirection: 'row', gap: space.lg },
-  fulfilmentColumn: { flexDirection: 'column' },
-  fulfilmentCard: {
-    flex: 1,
-    padding: space.lg,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface,
-    gap: space.sm,
-  },
-  fulfilmentCardSelected: { borderColor: color.brand, borderWidth: 2 },
-  fulfilmentTop: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  fulfilmentIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fulfilmentIconSelected: { backgroundColor: color.brandSoft },
-  fulfilmentText: { flex: 1, gap: 1 },
-  radioOuter: {
-    width: 20,
-    height: 20,
+    minHeight: touchTarget - 10,
+    paddingHorizontal: space.lg,
     borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: color.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  radioInner: {
-    width: 9,
-    height: 9,
-    borderRadius: radius.full,
-    backgroundColor: color.brand,
-  },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: radius.full,
-    backgroundColor: color.successFill,
-  },
-  fulfilmentDivider: { marginTop: space.xs },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  addressText: { flexShrink: 1 },
-
-  /* Promoción */
-  // Amarillo cálido, como el banner promocional de la referencia. Se diferencia del
-  // naranja de las acciones para que no compita con los botones.
-  promo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    padding: space.lg,
-    borderRadius: radius.card,
-    backgroundColor: color.accentSoft,
-    borderWidth: 1,
-    borderColor: color.accentBorder,
-  },
-  promoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: color.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promoText: { flex: 1, gap: 1 },
-  promoBadge: {
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs2,
-    borderRadius: radius.xs,
-    backgroundColor: color.brand,
-  },
+  modeTabSelected: { backgroundColor: color.brand },
 
   /* Recompra */
-  lastOrderCard: { gap: space.md, ...elevation.raised },
-  lastOrderHeader: {
+  lastOrder: {
+    padding: space.lg,
+    borderRadius: radius.card,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.brandBorder,
+    gap: space.xs,
+    ...elevation.card,
+  },
+  lastOrderHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: space.xs,
   },
-  statsRow: {
+  lastOrderButton: { marginTop: space.md },
+
+  /* Tarjeta de menú */
+  menuCard: {
+    padding: space.xl,
+    borderRadius: radius.card,
+    backgroundColor: color.surface,
+    gap: space.lg,
+    ...elevation.card,
+  },
+  tabs: { flexDirection: 'row', gap: space.xxl },
+  tab: { gap: space.sm, paddingTop: space.xs },
+  tabUnderline: { height: 3, borderRadius: radius.full, backgroundColor: 'transparent' },
+  tabUnderlineActive: { backgroundColor: color.brand },
+
+  rows: { gap: space.md },
+  row: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: color.brandBorder,
+    backgroundColor: color.surface,
+    padding: space.md,
+    gap: space.sm,
+  },
+  rowMain: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  // Foto circular, como en la referencia.
+  rowPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: color.surfaceMuted,
+  },
+  rowText: { flex: 1, gap: 1 },
+
+  sizeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    borderWidth: 1,
-    borderColor: color.border,
+    justifyContent: 'flex-end',
+    gap: space.xs,
   },
-  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.border },
-
-  /* Secciones */
-  section: { gap: space.lg },
-  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  sectionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
+  sizeItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  sizeButton: {
+    minWidth: 34,
+    height: 34,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.sm,
     backgroundColor: color.brandSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  /* Tarjetas de producto */
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
-  productCard: {
-    borderRadius: radius.card,
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    overflow: 'hidden',
-    ...elevation.card,
-  },
-  // Tres columnas en escritorio, una en móvil. El `gap` de 16 se descuenta del ancho.
-  productCardWide: { width: '31.8%' },
-  productCardNarrow: { width: '100%' },
-  photoWrap: { width: '100%', aspectRatio: 16 / 11, backgroundColor: color.surfaceMuted },
-  photo: { width: '100%', height: '100%' },
-  pricePill: {
-    position: 'absolute',
-    left: space.md,
-    top: space.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs2,
-    borderRadius: radius.full,
-    backgroundColor: color.surface,
-    ...elevation.card,
-  },
-  // Las acciones montan sobre el pie de la foto, como en la referencia.
-  actionRow: {
-    flexDirection: 'row',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    marginTop: -26,
-  },
-  actionButton: { flex: 1 },
-  addPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.xs2,
-    height: touchTarget - 8,
+  addCircle: {
+    width: 38,
+    height: 38,
     borderRadius: radius.full,
     backgroundColor: color.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  productBody: { padding: space.lg, paddingTop: space.md, gap: 2 },
 
-  noResults: { alignItems: 'center', gap: space.md, paddingVertical: space.xxl },
+  noResults: { paddingVertical: space.xxl, gap: space.xs },
 
-  pressed: { opacity: 0.75 },
+  pressed: { opacity: 0.7 },
 });

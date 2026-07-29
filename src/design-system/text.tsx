@@ -20,6 +20,7 @@ type Tone =
   | 'warning'
   | 'danger'
   | 'onBrand'
+  | 'onDark'
   | 'disabled';
 
 /**
@@ -39,7 +40,10 @@ const toneColor: Record<Tone, string> = {
   success: color.success,
   warning: color.warning,
   danger: color.danger,
+  /** Sobre el amarillo de marca: tinta oscura. Ver la nota de `color` en tokens. */
   onBrand: color.onBrand,
+  /** Sobre fotografía con velo oscuro. Es el único blanco de la escala. */
+  onDark: color.surface,
   disabled: color.inkDisabled,
 };
 

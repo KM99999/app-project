@@ -17,36 +17,44 @@
 /**
  * Relación de contraste verificada contra blanco (#FFFFFF), según WCAG 2.1.
  *
- * ── El problema del naranja, y cómo se resuelve ──
+ * ── El problema del amarillo, y cómo se resuelve ──
  *
- * El naranja vivo de la referencia (#F26522) da **3.15:1 sobre blanco**. Eso alcanza para
- * texto grande (≥18.66px en negrita) y para elementos no textuales, pero **no para texto
- * normal**, que necesita 4.5:1. Es la trampa clásica de este tipo de paletas: se ven
- * espectaculares en una maqueta y dejan ilegible la mitad de la app real.
+ * El amarillo es el color más traicionero de todos para una interfaz: `#FBD433` da **1.4:1
+ * sobre blanco**. No es "un poco flojo", es invisible. En la referencia, el título "Menu"
+ * está en amarillo sobre blanco y prácticamente no se lee.
  *
- * La solución tiene dos partes y ninguna sacrifica el aspecto:
+ * La regla que sale de ahí, y que este sistema aplica sin excepciones:
  *
- * 1. `brand` se usa como **relleno** —botones, chips activos, acentos—. Sobre él, el texto
- *    blanco va en 19px negrita, que sí califica como texto grande. La referencia ya usa
- *    etiquetas grandes y gruesas en sus botones, así que no hay que deformar el diseño.
- * 2. `brandText` es un naranja más profundo (5.18:1) para **texto naranja sobre blanco**:
- *    precios, enlaces, la palabra de acento del título.
+ * 1. **El amarillo es fondo, nunca texto.** Barra lateral, botones, subrayado de pestaña
+ *    activa, chips.
+ * 2. **Sobre amarillo se escribe con tinta oscura**, no con blanco. Da 12.3:1. El blanco
+ *    daría 1.4:1. Por eso `onBrand` es `#161312` y no `#FFFFFF`.
+ * 3. **Para texto dorado sobre blanco existe `brandText`** (#A16207, 4.92:1). Es lo que se
+ *    usa donde la referencia pone amarillo sobre blanco: se conserva la intención cromática
+ *    y el texto se lee.
  *
- * No es duplicación: es lo que evita que un precio quede ilegible.
+ * Amarillo sobre foto oscura —el titular del panel derecho— sí funciona, y es el único
+ * lugar donde el amarillo hace de color de texto.
  */
 export const color = {
-  /** Naranja vivo de la referencia. Relleno, nunca texto chico. 3.15:1 — AA large */
-  brand: '#F26522',
-  brandPressed: '#D9541A',
-  /** Naranja profundo, para texto sobre blanco. 5.18:1 ✅ AA */
-  brandText: '#C2410C',
+  /**
+   * Amarillo de la referencia. **Es un color de fondo, nunca de texto.**
+   * 1.4:1 sobre blanco: como texto sería literalmente invisible.
+   */
+  brand: '#FBD433',
+  brandPressed: '#EFC41F',
+  /** Amarillo oscurecido, para texto dorado sobre blanco. 4.92:1 ✅ AA */
+  brandText: '#A16207',
   /** Fondo teñido para chips y estados suaves. */
-  brandSoft: '#FFF1EA',
-  brandBorder: '#FBD5C2',
+  brandSoft: '#FEF7DC',
+  brandBorder: '#F7DE7A',
 
-  /** Amarillo cálido del banner promocional de la referencia. Solo fondo. */
-  accentSoft: '#FDF3D7',
-  accentBorder: '#F6E4B0',
+  /** Barra lateral y superficies de marca a plena saturación. */
+  rail: '#FBD433',
+
+  /** Segundo tono cálido, para bloques de apoyo. */
+  accentSoft: '#FEF9E7',
+  accentBorder: '#F5E6A8',
 
   /** Verde. Texto e iconos de éxito. 4.86:1 ✅ AA */
   success: '#1A8245',
@@ -72,15 +80,25 @@ export const color = {
   inkDisabled: '#D1D5DB',
 
   surface: '#FFFFFF',
-  /** Fondo de la app: gris muy claro y neutro, como el de la referencia. */
-  surfaceSunken: '#F4F4F5',
+  /** Fondo del panel: gris claro, como el de la referencia. */
+  surfaceSunken: '#EDEDEE',
   /** Relleno de buscador, pistas de control y cuadros de imagen. */
-  surfaceMuted: '#F1F1F2',
-  border: '#E9E9EC',
+  surfaceMuted: '#F3F3F4',
+  border: '#E4E4E7',
   borderStrong: '#D4D4D8',
   overlay: 'rgba(22, 19, 18, 0.45)',
+  /** Velo sobre fotografía, para que el texto encima se lea. */
+  photoScrim: 'rgba(22, 19, 18, 0.55)',
 
-  onBrand: '#FFFFFF',
+  /**
+   * Texto **sobre el amarillo**, y es tinta oscura, no blanco.
+   *
+   * Es la diferencia estructural con una paleta de naranja o índigo: sobre esos, el texto
+   * legible es blanco; sobre amarillo, el blanco da 1.4:1 y desaparece. La tinta sobre
+   * amarillo da **12.3:1**. Por eso `onBrand` existe como token y ningún componente
+   * escribe el color a mano: cambiar la marca no puede dejar botones ilegibles.
+   */
+  onBrand: '#161312',
 } as const;
 
 /** Grilla de 8, con 4 y 6 como medios pasos para ajustes ópticos. */

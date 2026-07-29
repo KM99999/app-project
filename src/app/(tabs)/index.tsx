@@ -37,7 +37,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/design-system/button';
 import { FLOATING_BAR_CLEARANCE } from '@/design-system/floating-tab-bar';
 import { Icon } from '@/design-system/icon';
-import { Bounded, useIsExtraWide, useIsWide } from '@/design-system/layout';
+import {
+  Bounded,
+  useIsExtraWide,
+  useIsWide,
+  useWindowCenteringPad,
+} from '@/design-system/layout';
 import { Chip } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -76,6 +81,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
   const isXWide = useIsExtraWide();
+  const centeringPad = useWindowCenteringPad();
   const { lastOrder, deliveryMode, setDeliveryMode, repeatLastOrder, addAddon } = useOrder();
   const { request } = useSectionNav();
 
@@ -215,7 +221,11 @@ export default function HomeScreen() {
         ref={scrollRef}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: (isWide ? space.xxl : insets.top) + space.lg },
+          {
+            paddingTop: (isWide ? space.xxl : insets.top) + space.lg,
+            // Espejo del riel, para que el bloque quede centrado contra la ventana.
+            paddingRight: space.lg + centeringPad,
+          },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">

@@ -33,8 +33,13 @@ export const BREAKPOINT_XWIDE = 1400;
  * Generoso a propósito: con el menú en dos columnas, el contenido tiene que poder ocupar
  * el ancho real de un monitor. El techo sigue existiendo porque más allá de esto una fila
  * se vuelve tan larga que deja de leerse de un vistazo.
+ *
+ * El valor está elegido para que en un monitor de ~1790px —el caso que reportó el
+ * cliente— no sobre espacio: sin holgura, el bloque llena el ancho junto al riel y no hay
+ * nada que se vea corrido a un lado. Es la forma más simple de resolver el centrado: que
+ * no quede hueco que centrar.
  */
-export const CONTENT_MAX_WIDTH = 1560;
+export const CONTENT_MAX_WIDTH = 1680;
 
 /**
  * Ancho máximo del contenido de una sola columna: carrito, checkout, constructor,
@@ -69,6 +74,27 @@ export function useIsWide(): boolean {
   const { width } = useWindowDimensions();
   const mounted = useMounted();
   return mounted && width >= BREAKPOINT_WIDE;
+}
+
+/**
+ * Relleno extra a la derecha para que el contenido quede centrado **respecto de la
+ * ventana**, y no de la franja que sobra a la derecha del riel.
+ *
+ * El problema: el riel ocupa `SIDEBAR_WIDTH` a la izquierda, así que `Bounded` centra
+ * dentro de lo que queda. Eso deja el bloque medio riel más a la derecha del centro real
+ * de la pantalla —58px medidos— y se nota.
+ *
+ * La corrección es un margen espejo del riel sobre la derecha, pero **solo cuando hay
+ * holgura**: si el contenido ya llena el ancho disponible, agregar el espejo abriría una
+ * franja vacía a la derecha, que se ve peor que el desvío que corrige. De ahí el
+ * `Math.min`: nunca se toma más espacio del que realmente sobra.
+ */
+export function useWindowCenteringPad(): number {
+  const { width } = useWindowDimensions();
+  const mounted = useMounted();
+  if (!mounted || width < BREAKPOINT_WIDE) return 0;
+  const slack = width - SIDEBAR_WIDTH - CONTENT_MAX_WIDTH;
+  return slack > 0 ? Math.min(SIDEBAR_WIDTH, slack) : 0;
 }
 
 /** `true` en monitores anchos, donde el menú entra en dos columnas. Ver `useIsWide`. */

@@ -20,8 +20,21 @@ export const BREAKPOINT_WIDE = 1024;
  */
 export const SIDEBAR_WIDTH = 108;
 
-/** Ancho máximo del contenido en grilla (Inicio). Más allá, la fila deja de leerse de un vistazo. */
-export const CONTENT_MAX_WIDTH = 1120;
+/**
+ * Corte para pantallas muy anchas. A partir de acá el menú pasa a dos columnas de filas:
+ * apiladas en una sola, el contenido queda angosto y larguísimo y deja media pantalla
+ * vacía a los costados.
+ */
+export const BREAKPOINT_XWIDE = 1400;
+
+/**
+ * Ancho máximo del contenido en grilla (Inicio).
+ *
+ * Generoso a propósito: con el menú en dos columnas, el contenido tiene que poder ocupar
+ * el ancho real de un monitor. El techo sigue existiendo porque más allá de esto una fila
+ * se vuelve tan larga que deja de leerse de un vistazo.
+ */
+export const CONTENT_MAX_WIDTH = 1560;
 
 /**
  * Ancho máximo del contenido de una sola columna: carrito, checkout, constructor,
@@ -56,6 +69,13 @@ export function useIsWide(): boolean {
   const { width } = useWindowDimensions();
   const mounted = useMounted();
   return mounted && width >= BREAKPOINT_WIDE;
+}
+
+/** `true` en monitores anchos, donde el menú entra en dos columnas. Ver `useIsWide`. */
+export function useIsExtraWide(): boolean {
+  const { width } = useWindowDimensions();
+  const mounted = useMounted();
+  return mounted && width >= BREAKPOINT_XWIDE;
 }
 
 /**

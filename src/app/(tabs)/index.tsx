@@ -37,7 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/design-system/button';
 import { FLOATING_BAR_CLEARANCE } from '@/design-system/floating-tab-bar';
 import { Icon } from '@/design-system/icon';
-import { Bounded, useIsWide } from '@/design-system/layout';
+import { Bounded, useIsExtraWide, useIsWide } from '@/design-system/layout';
 import { Chip } from '@/design-system/primitives';
 import { Screen } from '@/design-system/screen';
 import { Text } from '@/design-system/text';
@@ -75,6 +75,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
+  const isXWide = useIsExtraWide();
   const { lastOrder, deliveryMode, setDeliveryMode, repeatLastOrder, addAddon } = useOrder();
   const { request } = useSectionNav();
 
@@ -185,16 +186,22 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.rows}>
+          <View style={[styles.rows, isXWide && styles.rowsGrid]}>
             {pizzas.map((pizza) => (
               <PizzaRow
                 key={pizza.id}
                 pizza={pizza}
+                twoUp={isXWide}
                 onOpen={(sizeId) => openPizza(pizza.id, sizeId)}
               />
             ))}
             {addons.map((addon) => (
-              <AddonRow key={addon.id} addon={addon} onAdd={() => addAddon(addon.id)} />
+              <AddonRow
+                key={addon.id}
+                addon={addon}
+                twoUp={isXWide}
+                onAdd={() => addAddon(addon.id)}
+              />
             ))}
           </View>
         )}
@@ -225,8 +232,14 @@ export default function HomeScreen() {
           {isWide ? (
             // Dos columnas, como el original: menú a la izquierda, portada a la derecha.
             <View style={styles.columns}>
-              <View style={styles.columnLeft}>{menuPanel}</View>
-              <View style={styles.columnRight}>{hero}</View>
+              {/* En monitores anchos el menú lleva dos columnas de filas, así que necesita
+                  más ancho que la portada; por debajo de ese corte se reparten casi igual. */}
+              <View style={[styles.columnLeft, isXWide && styles.columnLeftXWide]}>
+                {menuPanel}
+              </View>
+              <View style={[styles.columnRight, isXWide && styles.columnRightXWide]}>
+                {hero}
+              </View>
             </View>
           ) : (
             <View style={styles.column}>
@@ -425,9 +438,17 @@ function LastOrderCard({ order, onRepeat }: { order: Order; onRepeat: () => void
  * elegido. La referencia muestra "R | M | L" como etiqueta muerta; convertirlas en atajos
  * reales cuesta lo mismo y ahorra un paso al usuario que ya sabe qué quiere.
  */
-function PizzaRow({ pizza, onOpen }: { pizza: Pizza; onOpen: (sizeId?: string) => void }) {
+function PizzaRow({
+  pizza,
+  onOpen,
+  twoUp = false,
+}: {
+  pizza: Pizza;
+  onOpen: (sizeId?: string) => void;
+  twoUp?: boolean;
+}) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, twoUp && styles.rowTwoUp]}>
       <Pressable
         onPress={() => onOpen()}
         accessibilityRole="button"
@@ -468,13 +489,26 @@ function PizzaRow({ pizza, onOpen }: { pizza: Pizza; onOpen: (sizeId?: string) =
 }
 
 /** Fila de bebida, acompañamiento o postre. Se agrega directo: no se configura. */
-function AddonRow({ addon, onAdd }: { addon: Addon; onAdd: () => void }) {
+function AddonRow({
+  addon,
+  onAdd,
+  twoUp = false,
+}: {
+  addon: Addon;
+  onAdd: () => void;
+  twoUp?: boolean;
+}) {
   return (
     <Pressable
       onPress={onAdd}
       accessibilityRole="button"
       accessibilityLabel={`Agregar ${addon.name} ${addon.detail}, ${formatPrice(addon.price)}`}
-      style={({ pressed }) => [styles.row, styles.rowMain, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.row,
+        styles.rowMain,
+        twoUp && styles.rowTwoUp,
+        pressed && styles.pressed,
+      ]}>
       <Image source={addon.image} style={styles.rowPhoto} contentFit="cover" transition={160} />
 
       <View style={styles.rowText}>
@@ -515,6 +549,8 @@ const styles = StyleSheet.create({
   columns: { flexDirection: 'row', gap: space.xl },
   columnLeft: { flex: 1 },
   columnRight: { flex: 1.15 },
+  columnLeftXWide: { flex: 1.75 },
+  columnRightXWide: { flex: 1 },
   column: { gap: space.lg },
 
   /* Portada */
@@ -615,6 +651,12 @@ const styles = StyleSheet.create({
   tabUnderlineActive: { backgroundColor: color.brand },
 
   rows: { gap: space.md },
+  // En monitores anchos las filas van de a dos: reduce a la mitad el alto del menú y usa
+  // el ancho que de otro modo queda vacío a los costados.
+  rowsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  // 48.8% y no 50%: el `gap` se descuenta del ancho disponible y con 50% la segunda
+  // columna salta de línea por redondeo de subpíxeles.
+  rowTwoUp: { width: '48.8%' },
   row: {
     borderRadius: radius.lg,
     borderWidth: 1.5,

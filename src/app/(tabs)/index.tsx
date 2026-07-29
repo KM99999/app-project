@@ -22,6 +22,7 @@
  */
 
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -291,7 +292,21 @@ function HeroPanel({
       {HERO_IMAGE ? (
         <Image source={HERO_IMAGE} style={styles.heroImage} contentFit="cover" transition={220} />
       ) : null}
-      <View style={styles.heroScrim} />
+
+      {/* Dos degradados en lugar de un velo plano sobre toda la foto.
+          El centro de la imagen queda limpio y solo se oscurece donde hay texto: arriba
+          para el titular, abajo para los datos de envío y el botón. Un velo parejo
+          apagaba la fotografía entera, que es justamente lo que vende el producto. */}
+      <LinearGradient
+        colors={['rgba(22,19,18,0.85)', 'rgba(22,19,18,0)']}
+        style={styles.heroFadeTop}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['rgba(22,19,18,0)', 'rgba(22,19,18,0.9)']}
+        style={styles.heroFadeBottom}
+        pointerEvents="none"
+      />
 
       <View style={styles.heroContent}>
         <Text variant={wide ? 'display' : 'h1'} style={styles.heroTitle}>
@@ -595,15 +610,13 @@ const styles = StyleSheet.create({
   // `minHeight` queda como piso para cuando el menú es corto (una sola pestaña filtrada).
   heroWide: { flex: 1, minHeight: 620 },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  // Velo obligatorio: sin él, el texto depende de qué zona de la foto le toque detrás.
-  heroScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: color.photoScrim,
-  },
+  // Los degradados cubren solo las bandas con texto; el resto de la foto queda a la vista.
+  //
+  // En porcentaje y no en píxeles: la portada mide 620px o más en escritorio pero 320 en
+  // móvil, y con alturas fijas los dos degradados se superponían en la pantalla chica y
+  // volvían a oscurecer la foto entera, que es justo lo que se quería evitar.
+  heroFadeTop: { position: 'absolute', top: 0, left: 0, right: 0, height: '34%' },
+  heroFadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%' },
   heroContent: { padding: space.xl, gap: space.xxl, justifyContent: 'space-between', flex: 1 },
   // Amarillo sobre oscuro: el único lugar donde el amarillo hace de color de texto.
   heroTitle: { color: color.brand, textTransform: 'uppercase' },

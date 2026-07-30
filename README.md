@@ -89,9 +89,14 @@ VPN activa, usá `npx expo start --tunnel` (requiere `npm i -g @expo/ngrok`).
 Genera un archivo que se instala y se comparte, sin Expo Go de por medio:
 
 ```bash
-npx eas login          # una sola vez, cuenta de Expo gratuita
-npx eas build -p android --profile preview
+npx eas-cli@latest login                            # una sola vez, cuenta de Expo gratuita
+npx eas-cli@latest build -p android --profile preview
 ```
+
+Se invoca con `npx` y **no** está entre las dependencias del proyecto a propósito:
+`eas-cli` arrastra unos 700 paquetes y un módulo nativo (`dtrace-provider`) que ni la app
+ni su build web necesitan. Tenerlo como dependencia hacía que `npm ci` tardara de más y
+fallara en máquinas sin herramientas de compilación.
 
 El build corre en los servidores de Expo y devuelve un enlace de descarga. Los perfiles
 están en [`eas.json`](eas.json): `preview` produce APK, `production` produce el app bundle
@@ -102,8 +107,8 @@ instalados. Por eso el build va por EAS.
 
 ### 3 · iOS
 
-`npx eas build -p ios` necesita cuenta de Apple Developer (99 USD al año). Para probar sin
-eso, Expo Go alcanza.
+`npx eas-cli@latest build -p ios` necesita cuenta de Apple Developer (99 USD al año). Para
+probar sin eso, Expo Go alcanza.
 
 ---
 
